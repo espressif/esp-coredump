@@ -1,5 +1,6 @@
 stages:
   - codecheck
+  - release
 
 
 # WORKFLOW RULES
@@ -16,7 +17,7 @@ workflow:
 # TEMPLATES
 # ------------------------------------------------------------------------------------------------------
 .base_template:
-  image: python:3.8-slim-buster
+  image: python:3.7-slim-buster
   tags:
     - build
     - internet
@@ -37,4 +38,20 @@ pre-commit_hooks_MR:
     - git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA | xargs pre-commit run --files
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+
+# Publish a PyPI package
+pypi:
+  stage: release
+  extends: .base_template
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install setuptools twine
+  script:
+    - echo "Packaging and publishing new espcoredump version"
+    - python setup.py sdist
+    - tar -ztvf dist/*
+    - TWINE_PASSWORD=${PYPI_ESP_COREDUMP_TOKEN} TWINE_USERNAME=__token__ python -m twine upload dist/*
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+(\.\d+)?($|-)/'
 # ------------------------------------------------------------------------------------------------------
