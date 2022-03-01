@@ -46,12 +46,17 @@ pypi:
   extends: .base_template
   before_script:
     - python -m pip install --upgrade pip
-    - pip install setuptools twine
+    - python -m pip install setuptools twine
+  variables:
+    TWINE_NON_INTERACTIVE: "true"
+    TWINE_USERNAME: __token__
+    TWINE_PASSWORD: ${PYPI_ESP_COREDUMP_TOKEN}
   script:
-    - echo "Packaging and publishing new espcoredump version"
+    - echo "Packaging espcoredump"
     - python setup.py sdist
-    - tar -ztvf dist/*
-    - TWINE_PASSWORD=${PYPI_ESP_COREDUMP_TOKEN} TWINE_USERNAME=__token__ python -m twine upload dist/*
+    - python -m pip download esp-coredump==$(python setup.py -V) && exit 0
+    - echo "Publishing new espcoredump version"
+    - python -m twine upload dist/*
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+(\.\d+)?($|-)/'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 # ------------------------------------------------------------------------------------------------------
