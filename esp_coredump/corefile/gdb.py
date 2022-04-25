@@ -14,21 +14,12 @@ from . import ESPCoreDumpError
 
 
 class EspGDB(object):
-    def __init__(self, gdb_path, gdb_cmds, core_filename, prog_filename, timeout_sec=DEFAULT_GDB_TIMEOUT_SEC):
+    def __init__(self, gdb_args, timeout_sec=DEFAULT_GDB_TIMEOUT_SEC):
 
         """
         Start GDB and initialize a GdbController instance
         """
-        gdb_args = ['--quiet',  # inhibit dumping info at start-up
-                    '--nx',  # inhibit window interface
-                    '--nw',  # ignore .gdbinit
-                    '--interpreter=mi2',  # use GDB/MI v2
-                    '--core=%s' % core_filename]  # core file
-        for c in gdb_cmds:
-            if c:
-                gdb_args += ['-ex', c]
-        gdb_args.append(prog_filename)
-        self.p = GdbController(gdb_path=gdb_path, gdb_args=gdb_args)
+        self.p = GdbController(gdb_path=gdb_args[0], gdb_args=gdb_args[1:])
         self.timeout = timeout_sec
 
         # Consume initial output by issuing a dummy command
