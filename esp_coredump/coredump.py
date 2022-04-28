@@ -12,7 +12,7 @@ import subprocess
 import sys
 from distutils.spawn import find_executable
 from shutil import copyfile
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import esptool
 from construct import Container, GreedyRange, Int32ul, ListContainer, Struct
@@ -44,6 +44,7 @@ class CoreDump:
                  gdb_timeout_sec: int = DEFAULT_GDB_TIMEOUT_SEC,
                  core: Optional[str] = None,
                  gdb: Optional[str] = None,
+                 extra_gdbinit_file: Optional[str] = None,
                  off: Optional[int] = None,
                  prog: Optional[str] = None,
                  print_mem: Optional[str] = None,
@@ -59,6 +60,7 @@ class CoreDump:
         self.core_format = core_format
         self.gdb = gdb
         self.gdb_timeout_sec = gdb_timeout_sec
+        self.extra_gdbinit_file = extra_gdbinit_file
         self.off = off
         self.prog = prog
         self.port = port
@@ -136,6 +138,33 @@ class CoreDump:
 
         return gdb_path
 
+    def get_gdb_args(self, target, core_elf_path, is_dbg_mode=False):
+        # type: (Optional[str], Optional[str], bool) -> List[str]
+        gdb_tool = self.get_gdb_path(target)
+        rom_elf_path = self.get_rom_elf_path(target)
+        rom_sym_cmd = self.load_aux_elf(rom_elf_path)
+
+        gdb_args = [gdb_tool]
+
+        if self.extra_gdbinit_file:
+            if not os.path.isfile(self.extra_gdbinit_file):
+                raise ValueError(f'{self.extra_gdbinit_file} does not exist')
+            gdb_args.append('-x={}'.format(self.extra_gdbinit_file))
+        else:
+            gdb_args.append('--nx')  # ignore .gdbinit
+
+        if not is_dbg_mode:
+            gdb_args.append('--nw')  # suppress the GUI interface
+            gdb_args.append('--quiet')  # inhibit dumping info at start-up
+            gdb_args.append('--interpreter=mi2')  # use GDB/MI v2
+
+        gdb_args.append('--core={}'.format(core_elf_path))  # core file
+        if rom_sym_cmd:
+            gdb_args += ['-ex', rom_sym_cmd]
+        gdb_args.append(self.prog)
+
+        return gdb_args
+
     def get_rom_elf_path(self, target=None):  # type: (Optional[str]) -> str
         if self.rom_elf:
             return self.rom_elf  # type: ignore
@@ -165,7 +194,7 @@ class CoreDump:
             print("\nCrashed task handle: 0x%x, name: '%s', GDB name: 'process %d'"
                   % (marker, task_name, marker))  # type: ignore
 
-    def print_threads_info(self, task_info):   # type: (Optional[list[Container]]) -> None
+    def print_threads_info(self, task_info):  # type: (Optional[list[Container]]) -> None
         print(self.gdb_esp.run_cmd('info threads'))
         # THREADS STACKS
         threads, _ = self.gdb_esp.get_thread_info()
@@ -275,17 +304,10 @@ class CoreDump:
         """
         exe_elf = ESPCoreDumpElfFile(self.prog)
         core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=exe_elf.e_machine)
+        gdb_args = self.get_gdb_args(target, core_elf_path, is_dbg_mode=True)
 
-        rom_elf_path = self.get_rom_elf_path(target)
-        rom_sym_cmd = self.load_aux_elf(rom_elf_path)
-
-        gdb_tool = self.get_gdb_path(target)
         p = subprocess.Popen(bufsize=0,
-                             args=[gdb_tool,
-                                   '--nw',  # ignore .gdbinit
-                                   '--core=%s' % core_elf_path,  # core file,
-                                   '-ex', rom_sym_cmd,
-                                   self.prog],
+                             args=gdb_args,
                              stdin=None, stdout=None, stderr=None,
                              close_fds=CLOSE_FDS)
         p.wait()
@@ -307,11 +329,9 @@ class CoreDump:
 
         print('===============================================================')
         print('==================== ESP32 CORE DUMP START ====================')
-        rom_elf_path = self.get_rom_elf_path(target)
-        rom_sym_cmd = self.load_aux_elf(rom_elf_path)
 
-        gdb_tool = self.get_gdb_path(target)
-        self.gdb_esp = EspGDB(gdb_tool, [rom_sym_cmd], core_elf_path, self.prog, timeout_sec=self.gdb_timeout_sec)
+        gdb_args = self.get_gdb_args(target, core_elf_path, is_dbg_mode=False)
+        self.gdb_esp = EspGDB(gdb_args, timeout_sec=self.gdb_timeout_sec)
 
         extra_info = None
         if extra_note:

@@ -31,6 +31,8 @@ common_args.add_argument('--debug', '-d', type=int, default=3,
                          help='Log level (0..3)')
 common_args.add_argument('--gdb', '-g',
                          help='Path to gdb')
+common_args.add_argument('--extra-gdbinit-file', '-ex',
+                         help='Path to additional gdbinit file')
 common_args.add_argument('--core', '-c',
                          help='Path to core dump file (if skipped core dump will be read from flash)')
 common_args.add_argument('--core-format', '-t', choices=['b64', 'elf', 'raw'], default='elf',
