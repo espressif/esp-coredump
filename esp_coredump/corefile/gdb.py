@@ -19,7 +19,12 @@ class EspGDB(object):
         """
         Start GDB and initialize a GdbController instance
         """
-        self.p = GdbController(gdb_path=gdb_args[0], gdb_args=gdb_args[1:])
+        try:
+            self.p = GdbController(command=gdb_args)
+        except TypeError:
+            # fallback for pygdbmi<0.10.0.0.
+            self.p = GdbController(gdb_path=gdb_args[0], gdb_args=gdb_args[1:])
+
         self.timeout = timeout_sec
 
         # Consume initial output by issuing a dummy command

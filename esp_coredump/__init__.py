@@ -22,6 +22,6 @@ __all__ = [
     'CoreDump',
 ]
 
-__version__ = '1.0'
+__version__ = '1.1'
 
 print(f'espcoredump.py v{__version__}', flush=True)
