@@ -7,21 +7,27 @@
 import argparse
 import os
 
-import esptool
 from pygdbmi.gdbcontroller import DEFAULT_GDB_TIMEOUT_SEC
 
 from esp_coredump import __version__
 
 from .corefile import SUPPORTED_TARGETS
 
+try:
+    # esptool>=4.0
+    from esptool.loader import ESPLoader
+except (AttributeError, ModuleNotFoundError):
+    # esptool<4.0
+    from esptool import ESPLoader
+
 parser = argparse.ArgumentParser(description='espcoredump.py v%s - ESP32 Core Dump Utility' % __version__)
 parser.add_argument('--chip', default=os.environ.get('ESPTOOL_CHIP', 'auto'),
                     choices=['auto'] + SUPPORTED_TARGETS,
                     help='Target chip type')
-parser.add_argument('--port', '-p', default=os.environ.get('ESPTOOL_PORT', esptool.ESPLoader.DEFAULT_PORT),
+parser.add_argument('--port', '-p', default=os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT),
                     help='Serial port device')
 parser.add_argument('--baud', '-b', type=int,
-                    default=os.environ.get('ESPTOOL_BAUD', esptool.ESPLoader.ESP_ROM_BAUD),
+                    default=os.environ.get('ESPTOOL_BAUD', ESPLoader.ESP_ROM_BAUD),
                     help='Serial port baud rate used when flashing/reading')
 parser.add_argument('--gdb-timeout-sec', type=int, default=DEFAULT_GDB_TIMEOUT_SEC,
                     help='Overwrite the default internal delay for gdb responses')

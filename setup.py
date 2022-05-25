@@ -17,7 +17,7 @@ URL = 'https://github.com/espressif/esp-idf'
 EMAIL = 'aleksei.apaseev@espressif.com'
 AUTHOR = 'Espressif Systems'
 REQUIRES_PYTHON = '>=3.6.0'
-REQUIRED = ['construct~=2.10', 'pygdbmi>=0.9.0.2']
+REQUIRED = ['construct~=2.10', 'pygdbmi>=0.9.0.2', 'esptool']
 
 cur_dir_path = os.path.abspath(os.path.dirname(__file__))
 init_file_path = './esp_coredump/__init__.py'

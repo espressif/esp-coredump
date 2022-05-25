@@ -14,7 +14,15 @@ from distutils.spawn import find_executable
 from shutil import copyfile
 from typing import List, Optional, Tuple, Union
 
-import esptool
+try:
+    # esptool>=4.0
+    from esptool.cmds import detect_chip
+    from esptool.loader import ESPLoader
+except (AttributeError, ModuleNotFoundError):
+    # esptool<4.0
+    from esptool import ESPLoader
+    detect_chip = ESPLoader.detect_chip
+
 from construct import Container, GreedyRange, Int32ul, ListContainer, Struct
 from pygdbmi.gdbcontroller import DEFAULT_GDB_TIMEOUT_SEC
 
@@ -37,10 +45,10 @@ else:
 
 class CoreDump:
     def __init__(self,
-                 baud: Optional[int] = int(os.environ.get('ESPTOOL_BAUD', esptool.ESPLoader.ESP_ROM_BAUD)),
+                 baud: Optional[int] = int(os.environ.get('ESPTOOL_BAUD', ESPLoader.ESP_ROM_BAUD)),
                  chip: str = os.environ.get('ESPTOOL_CHIP', 'auto'),
                  core_format: str = 'elf',
-                 port: str = os.environ.get('ESPTOOL_PORT', esptool.ESPLoader.DEFAULT_PORT),
+                 port: str = os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT),
                  gdb_timeout_sec: int = DEFAULT_GDB_TIMEOUT_SEC,
                  core: Optional[str] = None,
                  gdb: Optional[str] = None,
@@ -114,7 +122,7 @@ class CoreDump:
         if self.chip != 'auto':
             return self.chip  # type: ignore
 
-        inst = esptool.ESPLoader.detect_chip(self.port, self.baud)
+        inst = detect_chip(self.port, self.baud)
         return inst.CHIP_NAME.lower().replace('-', '')  # type: ignore
 
     def get_gdb_path(self, target=None):  # type: (Optional[str]) -> str
