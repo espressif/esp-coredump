@@ -6,7 +6,6 @@
 #
 # ESP-IDF Core Dump Utility
 #
-
 import os
 import subprocess
 import sys
@@ -33,9 +32,14 @@ from .corefile.gdb import EspGDB
 from .corefile.loader import ESPCoreDumpFileLoader, ESPCoreDumpFlashLoader
 
 IDF_PATH = os.getenv('IDF_PATH')
-if not IDF_PATH:
-    sys.stderr.write('IDF_PATH is not found! Set proper IDF_PATH in environment.\n')
-    sys.exit(2)
+
+MORE_INFO_MSG = 'Read more: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html'
+GDB_NOT_FOUND_ERROR = (
+    f'GDB executable not found. Please install GDB or set up ESP-IDF to complete the action. '
+    f'{MORE_INFO_MSG}'
+)
+IDF_SETUP_ERROR = f'Please set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
+
 
 if os.name == 'nt':
     CLOSE_FDS = False
@@ -98,6 +102,9 @@ class CoreDump:
 
         if not self.core:
             # Core file not specified, try to read core dump from flash.
+            if not IDF_PATH:
+                print(IDF_SETUP_ERROR)
+                sys.exit(1)
             loader = ESPCoreDumpFlashLoader(self.off, self.chip, port=self.port, baud=self.baud)
         elif self.core_format != 'elf':
             # Core file specified, but not yet in ELF format. Convert it from raw or base64 into ELF.
@@ -125,7 +132,7 @@ class CoreDump:
         inst = detect_chip(self.port, self.baud)
         return inst.CHIP_NAME.lower().replace('-', '')  # type: ignore
 
-    def get_gdb_path(self, target=None):  # type: (Optional[str]) -> str
+    def get_gdb_path(self, target=None):  # type: (Optional[str]) -> Optional[str]
         if self.gdb:
             return self.gdb  # type: ignore
 
@@ -141,14 +148,17 @@ class CoreDump:
         else:
             raise ValueError('Invalid value: {}. For now we only support {}'.format(target, SUPPORTED_TARGETS))
         if not find_executable(gdb_path):
-            raise ValueError(f'gdb executable could not be resolved '
-                             f' \n\n\tPlease run: \n\n{IDF_PATH}/install.sh\n\n')
+            return None
 
         return gdb_path
 
     def get_gdb_args(self, target, core_elf_path, is_dbg_mode=False):
         # type: (Optional[str], Optional[str], bool) -> List[str]
         gdb_tool = self.get_gdb_path(target)
+        if not gdb_tool:
+            print(GDB_NOT_FOUND_ERROR)
+            sys.exit(1)
+
         rom_elf_path = self.get_rom_elf_path(target)
         rom_sym_cmd = self.load_aux_elf(rom_elf_path)
 
@@ -313,7 +323,6 @@ class CoreDump:
         exe_elf = ESPCoreDumpElfFile(self.prog)
         core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=exe_elf.e_machine)
         gdb_args = self.get_gdb_args(target, core_elf_path, is_dbg_mode=True)
-
         p = subprocess.Popen(bufsize=0,
                              args=gdb_args,
                              stdin=None, stdout=None, stderr=None,
@@ -339,6 +348,7 @@ class CoreDump:
         print('==================== ESP32 CORE DUMP START ====================')
 
         gdb_args = self.get_gdb_args(target, core_elf_path, is_dbg_mode=False)
+
         self.gdb_esp = EspGDB(gdb_args, timeout_sec=self.gdb_timeout_sec)
 
         extra_info = None
@@ -353,10 +363,8 @@ class CoreDump:
 
         print('\n==================== CURRENT THREAD STACK =====================')
         self.print_current_thread_stack(task_info)
-
         print('\n======================== THREADS INFO =========================')
         self.print_threads_info(task_info)
-
         print('\n\n======================= ALL MEMORY REGIONS ========================')
         self.print_all_memory_regions()
 
