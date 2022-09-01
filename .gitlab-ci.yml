@@ -39,6 +39,20 @@ pre-commit_hooks_MR:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
+# Check if parse_soc_h_script got changed on IDF side
+parse_soc_h_script_check:
+  stage: codecheck
+  image: espressif/idf:latest
+  tags:
+    - build
+    - internet
+  script:
+    - pip install .
+    - python esp_coredump/corefile/_parse_soc_header.py
+    - git diff --exit-code -- esp_coredump/corefile/soc_headers/\* || exit 1;
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
 
 # Publish a PyPI package
 pypi:

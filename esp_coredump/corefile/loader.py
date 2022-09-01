@@ -447,9 +447,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
         """
         if target is None:
             target = 'auto'
-        tool_args = [sys.executable,
-                     os.path.join(os.environ['IDF_PATH'], 'components/esptool_py/esptool/esptool.py'),
-                     '-c', target]
+        tool_args = [sys.executable, '-m', 'esptool', '-c', target]
         if self.port:
             tool_args.extend(['-p', self.port])
         if self.baud:

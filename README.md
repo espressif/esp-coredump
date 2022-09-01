@@ -6,11 +6,9 @@ A Python-based utility that helps users to retrieve and analyse core dumps. This
 
 - `dbg_corefile` - creates core dump ELF file and runs GDB debug session with this file. User can examine memory, variables and tasks states manually. Note that since not all memory is saved in core dump only values of variables allocated on stack will be meaningful
 
-###### The tool is only compatible with Espressif chips and requires the installation of the ESP-IDF framework (please see the **Installation** section for further information).
-
 ## Installation
 
-**esp-coredump** utility is offered as a part of **ESP-IDF** framework and should not be deployed as a standalone tool.
+**esp-coredump** is a stand-alone utility integrated into ESP-IDF.
 
 To install the **ESP-IDF** framework please visit the [documentation](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html).
 

@@ -1,9 +1,3 @@
-#
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-
 SOC_IRAM_LOW = 0x40020000
 SOC_IRAM_HIGH = 0x40070000
 SOC_DRAM_LOW = 0x3ffb0000
