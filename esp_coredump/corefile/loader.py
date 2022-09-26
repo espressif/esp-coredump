@@ -20,7 +20,7 @@ from construct import (AlignedStruct, Bytes, GreedyRange, Int32ul, Padding,
 from . import ESPCoreDumpLoaderError
 from .elf import (TASK_STATUS_CORRECT, TASK_STATUS_TCB_CORRUPTED, ElfFile,
                   ElfSegment, ESPCoreDumpElfFile, EspTaskStatus, NoteSection)
-from .riscv import Esp32c3Methods
+from .riscv import Esp32C2Methods, Esp32c3Methods
 from .xtensa import Esp32Methods, Esp32S2Methods, Esp32S3Methods
 
 IDF_PATH = os.getenv('IDF_PATH', '')
@@ -70,7 +70,8 @@ class EspCoreDumpVersion(object):
     XTENSA_CHIPS = [ESP32, ESP32S2, ESP32S3]
 
     ESP32C3 = 5
-    RISCV_CHIPS = [ESP32C3]
+    ESP32C2 = 12
+    RISCV_CHIPS = [ESP32C3, ESP32C2]
 
     COREDUMP_SUPPORTED_TARGETS = XTENSA_CHIPS + RISCV_CHIPS
 
@@ -184,6 +185,8 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                 self.target_methods = Esp32c3Methods()  # type: ignore
             elif self.chip_ver == self.ESP32S3:
                 self.target_methods = Esp32S3Methods()  # type: ignore
+            elif self.chip_ver == self.ESP32C2:
+                self.target_methods = Esp32C2Methods()  # type: ignore
             else:
                 raise NotImplementedError
         else:

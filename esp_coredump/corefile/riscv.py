@@ -48,3 +48,7 @@ class RiscvMethodsMixin(BaseArchMethodsMixin):
 
 class Esp32c3Methods(BaseTargetMethods, RiscvMethodsMixin):
     TARGET = 'esp32c3'
+
+
+class Esp32C2Methods(BaseTargetMethods, RiscvMethodsMixin):
+    TARGET = 'esp32c2'
