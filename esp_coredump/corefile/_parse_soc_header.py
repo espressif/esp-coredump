@@ -45,7 +45,8 @@ def main():  # type: () -> None
 
         for attr in constants:
             if attr not in target_constants:
-                raise ValueError('ERROR: Attr {} is missing in {}'.format(attr, soc_header_fp))
+                print(f'WARNING: {attr} is missing in {soc_header_fp}, check if this is correct!', file=sys.stderr)
+                target_constants[attr] = 2**32 - 1
 
         with open(module_fp, 'w') as fw:
             for k, v in target_constants.items():
