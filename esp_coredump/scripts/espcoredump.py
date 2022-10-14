@@ -7,13 +7,14 @@
 import logging
 import os.path
 
-from esp_coredump import CoreDump
+from esp_coredump import CoreDump, __version__
 from esp_coredump.cli_ext import parser
 
 
 def main():
-    args = parser.parse_args()
+    print(f'espcoredump.py v{__version__}', flush=True)
 
+    args = parser.parse_args()
     if args.debug == 0:
         log_level = logging.CRITICAL
     elif args.debug == 1:

@@ -31,6 +31,8 @@ parser.add_argument('--baud', '-b', type=int,
                     help='Serial port baud rate used when flashing/reading')
 parser.add_argument('--gdb-timeout-sec', type=int, default=DEFAULT_GDB_TIMEOUT_SEC,
                     help='Overwrite the default internal delay for gdb responses')
+parser.add_argument('--version', action='version',
+                    version=f'espcoredump.py v{__version__}')
 
 common_args = argparse.ArgumentParser(add_help=False)
 common_args.add_argument('--debug', '-d', type=int, default=3,
