@@ -216,6 +216,11 @@ class CoreDump:
         print(self.gdb_esp.run_cmd('info threads'))
         # THREADS STACKS
         threads, _ = self.gdb_esp.get_thread_info()
+
+        if not threads:
+            print('\nThe threads information for the current task could not be retrieved. '
+                  'Please try running this command again.')
+
         for thr in threads:
             thr_id = int(thr['id'])
             tcb_addr = self.gdb_esp.gdb2freertos_thread_id(thr['target-id'])
