@@ -39,10 +39,10 @@ class EspGDB(object):
             logging.warning('Attempt to terminate the GDB process failed, because it is already terminated. Skip')
 
     def _gdbmi_run_cmd_get_responses(self, cmd, resp_message, resp_type, multiple=True,
-                                     done_message=None, done_type=None):
+                                     done_message=None, done_type=None, response_delay_sec=None):
 
         self.p.write(cmd, read_response=False)
-        t_end = time.time() + self.timeout
+        t_end = time.time() + (response_delay_sec or self.timeout)
         filtered_response_list = []
         all_responses = []
         while time.time() < t_end:
@@ -60,9 +60,10 @@ class EspGDB(object):
             ))
         return filtered_response_list
 
-    def _gdbmi_run_cmd_get_one_response(self, cmd, resp_message, resp_type):
+    def _gdbmi_run_cmd_get_one_response(self, cmd, resp_message, resp_type, response_delay_sec=None):
 
-        return self._gdbmi_run_cmd_get_responses(cmd, resp_message, resp_type, multiple=False)[0]
+        return self._gdbmi_run_cmd_get_responses(cmd, resp_message, resp_type, response_delay_sec=response_delay_sec,
+                                                 multiple=False)[0]
 
     def _gdbmi_data_evaluate_expression(self, expr):
         """ Get the value of an expression, similar to the 'print' command """
@@ -96,7 +97,10 @@ class EspGDB(object):
 
     def get_thread_info(self):
         """ Get information about all threads known to GDB, and the current thread ID """
-        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result')['payload']
+        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result', response_delay_sec=2)['payload']
+        if not result:
+            return None, None
+
         current_thread_id = result['current-thread-id']
         threads = result['threads']
         return threads, current_thread_id

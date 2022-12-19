@@ -12,7 +12,7 @@ repos:
         args: ['-f=lf']
       - id: double-quote-string-fixer
 
-  - repo: https://gitlab.com/pycqa/flake8
+  - repo: https://github.com/pycqa/flake8
     rev: 5.0.4
     hooks:
       - id: flake8
