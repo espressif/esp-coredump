@@ -13,6 +13,8 @@ from distutils.spawn import find_executable
 from shutil import copyfile
 from typing import List, Optional, Tuple, Union
 
+import serial
+
 try:
     # esptool>=4.0
     from esptool.cmds import detect_chip
@@ -29,7 +31,8 @@ from .corefile import RISCV_TARGETS, SUPPORTED_TARGETS, XTENSA_TARGETS, xtensa
 from .corefile.elf import (TASK_STATUS_CORRECT, ElfFile, ElfSegment,
                            ESPCoreDumpElfFile, EspTaskStatus)
 from .corefile.gdb import EspGDB
-from .corefile.loader import ESPCoreDumpFileLoader, ESPCoreDumpFlashLoader
+from .corefile.loader import (ESPCoreDumpFileLoader, ESPCoreDumpFlashLoader,
+                              EspCoreDumpVersion)
 
 IDF_PATH = os.getenv('IDF_PATH')
 
@@ -125,19 +128,48 @@ class CoreDump:
 
         return core_filename, target, temp_files  # type: ignore
 
+    def get_chip_version(self):  # type: () -> Optional[int]
+        for segment in self.core_elf.note_segments:
+            for sec in segment.note_secs:
+                if sec.type == ESPCoreDumpElfFile.PT_INFO:
+                    ver_bytes = sec.desc[:4]
+                    return int((ver_bytes[3] << 8) | ver_bytes[2])
+        return None
+
     def get_target(self):  # type: () -> str
+        target = None
+
         if self.chip != 'auto':
             return self.chip  # type: ignore
 
-        inst = detect_chip(self.port, self.baud)
-        return inst.CHIP_NAME.lower().replace('-', '')  # type: ignore
+        chip_version = self.get_chip_version()
+        if chip_version is not None:
+            if chip_version == EspCoreDumpVersion.ESP32:
+                return 'esp32'
 
-    def get_gdb_path(self, target=None):  # type: (Optional[str]) -> Optional[str]
+            if chip_version == EspCoreDumpVersion.ESP32S2:
+                return 'esp32s2'
+
+            if chip_version == EspCoreDumpVersion.ESP32S3:
+                return 'esp32s3'
+
+            if chip_version == EspCoreDumpVersion.ESP32C3:
+                return 'esp32c3'
+
+        try:
+            inst = detect_chip(self.port, self.baud)
+        except serial.serialutil.SerialException:
+            print('Unable to identify the chip type. Please use the --chip option to specify the chip type or '
+                  'connect the board and provide the --port option to have the chip type determined automatically.')
+            exit(0)
+        else:
+            target = inst.CHIP_NAME.lower().replace('-', '')
+
+        return target  # type: ignore
+
+    def get_gdb_path(self, target):  # type: (str) -> Optional[str]
         if self.gdb:
             return self.gdb  # type: ignore
-
-        if target is None:
-            target = self.get_target()
 
         if target in XTENSA_TARGETS:
             # For some reason, xtensa-esp32s2-elf-gdb will report some issue.
@@ -153,7 +185,7 @@ class CoreDump:
         return gdb_path
 
     def get_gdb_args(self, target, core_elf_path, is_dbg_mode=False):
-        # type: (Optional[str], Optional[str], bool) -> List[str]
+        # type: (str, Optional[str], bool) -> List[str]
         gdb_tool = self.get_gdb_path(target)
         if not gdb_tool:
             print(GDB_NOT_FOUND_ERROR)
@@ -183,12 +215,9 @@ class CoreDump:
 
         return gdb_args
 
-    def get_rom_elf_path(self, target=None):  # type: (Optional[str]) -> str
+    def get_rom_elf_path(self, target):  # type: (str) -> str
         if self.rom_elf:
             return self.rom_elf  # type: ignore
-
-        if target is None:
-            target = self.get_target()
 
         return '{}_rom.elf'.format(target)
 
@@ -327,6 +356,11 @@ class CoreDump:
         """
         exe_elf = ESPCoreDumpElfFile(self.prog)
         core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=exe_elf.e_machine)
+        self.core_elf = ESPCoreDumpElfFile(core_elf_path)
+
+        if target is None:
+            target = self.get_target()
+
         gdb_args = self.get_gdb_args(target, core_elf_path, is_dbg_mode=True)
         p = subprocess.Popen(bufsize=0,
                              args=gdb_args,
@@ -343,6 +377,9 @@ class CoreDump:
         self.exe_elf = ESPCoreDumpElfFile(self.prog)
         core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=self.exe_elf.e_machine)
         self.core_elf = ESPCoreDumpElfFile(core_elf_path)
+
+        if target is None:
+            target = self.get_target()
 
         if self.exe_elf.e_machine != self.core_elf.e_machine:
             raise ValueError('The arch should be the same between core elf and exe elf')
