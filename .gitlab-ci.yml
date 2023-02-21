@@ -1,5 +1,6 @@
 stages:
   - codecheck
+  - test
   - release
 
 
@@ -18,6 +19,12 @@ workflow:
 # ------------------------------------------------------------------------------------------------------
 .base_template:
   image: python:3.7-slim-buster
+  tags:
+    - build
+    - internet
+
+.idf_template:
+  image: espressif/idf:latest
   tags:
     - build
     - internet
@@ -42,16 +49,25 @@ pre-commit_hooks_MR:
 # Check if parse_soc_h_script got changed on IDF side
 parse_soc_h_script_check:
   stage: codecheck
-  image: espressif/idf:latest
-  tags:
-    - build
-    - internet
+  extends: .idf_template
   script:
     - pip install .
     - python esp_coredump/corefile/_parse_soc_header.py
     - git diff --exit-code -- esp_coredump/corefile/soc_headers/\* || exit 1;
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+test_espcoredump:
+  stage: test
+  extends: .idf_template
+  artifacts:
+    when: on_failure
+    paths:
+      - "tests"
+    expire_in: 1 week
+  script:
+    - pip install -e .
+    - python esp_coredump/scripts/run_tests.py
 
 
 # Publish a PyPI package

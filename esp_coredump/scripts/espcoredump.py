@@ -1,5 +1,5 @@
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -29,8 +29,8 @@ def main():
 
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
 
-    del(kwargs['debug'])
-    del(kwargs['operation'])
+    del kwargs['debug']
+    del kwargs['operation']
 
     espcoredump = CoreDump(**kwargs)
     temp_core_files = None

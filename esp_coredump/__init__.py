@@ -1,5 +1,5 @@
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -22,4 +22,4 @@ __all__ = [
     'CoreDump',
 ]
 
-__version__ = '1.4.2'
+__version__ = '1.5.0'

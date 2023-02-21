@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -49,6 +49,7 @@ setup(
     name=NAME,
     version=find_version(init_file_path),
     description=DESCRIPTION,
+    include_package_data=True,
     long_description=long_description,
     long_description_content_type='text/markdown',
     author=AUTHOR,
@@ -58,7 +59,7 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-            'esp-coredump = esp_coredump.scripts.espcoredump:main'
+            'esp-coredump = esp_coredump.scripts.espcoredump:main',
         ],
     },
     install_requires=REQUIRED,

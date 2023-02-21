@@ -1,5 +1,5 @@
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -42,6 +42,15 @@ EspCoreDumpV2Header = Struct(
     'task_num' / Int32ul,
     'tcbsz' / Int32ul,
     'segs_num' / Int32ul,
+)
+
+EspCoreDumpV2_1_Header = Struct(
+    'tot_len' / Int32ul,
+    'ver' / Int32ul,
+    'task_num' / Int32ul,
+    'tcbsz' / Int32ul,
+    'segs_num' / Int32ul,
+    'chip_rev' / Int32ul,
 )
 
 CRC = Int32ul
@@ -112,8 +121,11 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
     # "legacy" stands for core dumps v0.1 (before IDF v4.1)
     BIN_V1 = EspCoreDumpVersion.make_dump_ver(0, 1)
     BIN_V2 = EspCoreDumpVersion.make_dump_ver(0, 2)
-    ELF_CRC32 = EspCoreDumpVersion.make_dump_ver(1, 0)
-    ELF_SHA256 = EspCoreDumpVersion.make_dump_ver(1, 1)
+    BIN_V2_1 = EspCoreDumpVersion.make_dump_ver(0, 3)
+    ELF_CRC32_V2 = EspCoreDumpVersion.make_dump_ver(1, 0)
+    ELF_CRC32_V2_1 = EspCoreDumpVersion.make_dump_ver(1, 2)
+    ELF_SHA256_V2 = EspCoreDumpVersion.make_dump_ver(1, 1)
+    ELF_SHA256_V2_1 = EspCoreDumpVersion.make_dump_ver(1, 3)
 
     def __init__(self):  # type: () -> None
         super(EspCoreDumpLoader, self).__init__()
@@ -150,20 +162,31 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
 
         _header = EspCoreDumpV1Header.parse(coredump_bytes)  # first we use V1 format to get version
         self.set_version(_header.ver)
-        if self.dump_ver == self.ELF_CRC32:
+        if self.dump_ver == self.ELF_CRC32_V2:
             self.checksum_struct = CRC
             self.header_struct = EspCoreDumpV2Header
-        elif self.dump_ver == self.ELF_SHA256:
+        elif self.dump_ver == self.ELF_CRC32_V2_1:
+            self.checksum_struct = CRC
+            self.header_struct = EspCoreDumpV2_1_Header
+        elif self.dump_ver == self.ELF_SHA256_V2:
             self.checksum_struct = SHA256
             self.header_struct = EspCoreDumpV2Header
+        elif self.dump_ver == self.ELF_SHA256_V2_1:
+            self.checksum_struct = SHA256
+            self.header_struct = EspCoreDumpV2_1_Header
         elif self.dump_ver == self.BIN_V1:
             self.checksum_struct = CRC
             self.header_struct = EspCoreDumpV1Header
         elif self.dump_ver == self.BIN_V2:
             self.checksum_struct = CRC
             self.header_struct = EspCoreDumpV2Header
+        elif self.dump_ver == self.BIN_V2_1:
+            self.checksum_struct = CRC
+            self.header_struct = EspCoreDumpV2_1_Header
         else:
             raise ESPCoreDumpLoaderError('Core dump version "0x%x" is not supported!' % self.dump_ver)
+
+        self.header = self.header_struct.parse(coredump_bytes)
 
         self.core_src_struct = Struct(
             'header' / self.header_struct,
@@ -172,9 +195,10 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         )
         self.core_src = self.core_src_struct.parse(coredump_bytes)  # type: ignore
 
-        # Reload header if header struct changes after parsing
-        if self.header_struct != EspCoreDumpV1Header:
-            self.header = EspCoreDumpV2Header.parse(coredump_bytes)
+        if self.header and self.header.get('chip_rev') is not None:
+            self.chip_rev = self.header.chip_rev // 100  # type: ignore
+        else:
+            self.chip_rev = None  # type: ignore
 
         if self.chip_ver in self.COREDUMP_SUPPORTED_TARGETS:
             if self.chip_ver == self.ESP32:
@@ -205,15 +229,25 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
             self._sha256_validate()
 
     def _crc_validate(self):  # type: () -> None
-        data_crc = binascii.crc32(
-            EspCoreDumpV2Header.build(self.core_src.header) + self.core_src.data) & 0xffffffff  # type: ignore
+        if self.dump_ver in [self.BIN_V2_1,
+                             self.ELF_CRC32_V2_1]:
+            data_crc = binascii.crc32(
+                EspCoreDumpV2_1_Header.build(self.core_src.header) + self.core_src.data) & 0xffffffff  # type: ignore
+        else:
+            data_crc = binascii.crc32(
+                EspCoreDumpV2Header.build(self.core_src.header) + self.core_src.data) & 0xffffffff  # type: ignore
         if data_crc != self.core_src.checksum:  # type: ignore
             raise ESPCoreDumpLoaderError(
                 'Invalid core dump CRC %x, should be %x' % (data_crc, self.core_src.crc))  # type: ignore
 
     def _sha256_validate(self):  # type: () -> None
-        data_sha256 = hashlib.sha256(
-            EspCoreDumpV2Header.build(self.core_src.header) + self.core_src.data)  # type: ignore
+        if self.dump_ver in [self.ELF_SHA256_V2_1]:
+            data_sha256 = hashlib.sha256(
+                EspCoreDumpV2_1_Header.build(self.core_src.header) + self.core_src.data)  # type: ignore
+        else:
+            data_sha256 = hashlib.sha256(
+                EspCoreDumpV2Header.build(self.core_src.header) + self.core_src.data)  # type: ignore
+
         data_sha256_str = data_sha256.hexdigest()
         sha256_str = binascii.hexlify(self.core_src.checksum).decode('ascii')  # type: ignore
         if data_sha256_str != sha256_str:
@@ -228,11 +262,14 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         self._validate_dump_file()
         self.core_elf_file = self._create_temp_file()
 
-        if self.dump_ver in [self.ELF_CRC32,
-                             self.ELF_SHA256]:
+        if self.dump_ver in [self.ELF_CRC32_V2,
+                             self.ELF_CRC32_V2_1,
+                             self.ELF_SHA256_V2,
+                             self.ELF_SHA256_V2_1]:
             self._extract_elf_corefile(exe_name, e_machine)
         elif self.dump_ver in [self.BIN_V1,
-                               self.BIN_V2]:
+                               self.BIN_V2,
+                               self.BIN_V2_1]:
             self._extract_bin_corefile(e_machine)
         else:
             raise NotImplementedError
@@ -246,6 +283,18 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
             fw.write(self.core_src.data)  # type: ignore
 
         core_elf = ESPCoreDumpElfFile(self.core_elf_file, e_machine=e_machine)  # type: ignore
+
+        if self.chip_rev is not None:  # type: ignore
+            chip_rev_note = b''
+            chip_rev_note += self._build_note_section('ESP_CHIP_REV',
+                                                      ESPCoreDumpElfFile.PT_INFO,
+                                                      Int32ul.build(self.chip_rev))  # type: ignore
+            try:
+                core_elf.add_segment(0, chip_rev_note, ElfFile.PT_NOTE, 0)
+            except ESPCoreDumpLoaderError as e:
+                logging.warning('Skip core dump info NOTES segment {:d} bytes @ 0x{:x}. (Reason: {})'
+                                .format(len(chip_rev_note), 0, e))
+            core_elf.dump(self.core_elf_file)
 
         # Read note segments from core file which are belong to tasks (TCB or stack)
         for seg in core_elf.note_segments:
@@ -505,7 +554,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
                 logging.info(et_out.decode('utf-8'))
         except subprocess.CalledProcessError as e:
             raise ESPCoreDumpLoaderError(f'parttool script execution failed with error {e.returncode}, '
-                                         "failed command was: '{}'".format(' '.join(e.cmd)),
+                                         f"failed command was: '{' '.join(e.cmd)}'",
                                          extra_output=e.output.decode('utf-8', 'ignore'))
 
     def _get_core_dump_partition_info(self, part_off=None):  # type: (Optional[int]) -> Tuple[int, int]
@@ -529,7 +578,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             logging.info('Core dump partition offset=%d, size=%d', offset, size)
         except subprocess.CalledProcessError as e:
             raise ESPCoreDumpLoaderError(f'parttool script execution failed with error {e.returncode}, '
-                                         "failed command was: '{}'".format(' '.join(e.cmd)),
+                                         f"failed command was: '{' '.join(e.cmd)}'",
                                          extra_output=e.output.decode('utf-8', 'ignore'))
         return offset, size
 
