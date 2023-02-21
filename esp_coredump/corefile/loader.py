@@ -196,7 +196,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         self.core_src = self.core_src_struct.parse(coredump_bytes)  # type: ignore
 
         if self.header and self.header.get('chip_rev') is not None:
-            self.chip_rev = self.header.chip_rev // 100  # type: ignore
+            self.chip_rev = self.header.chip_rev  # type: ignore
         else:
             self.chip_rev = None  # type: ignore
 

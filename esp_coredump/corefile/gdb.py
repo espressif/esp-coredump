@@ -95,7 +95,8 @@ class EspGDB(object):
         return ''.join([x['payload'] for x in filtered_responses]) \
             .replace('\\n', '\n') \
             .replace('\\t', '\t') \
-            .rstrip('\n')
+            .rstrip('\n') \
+            .replace('\\"', '"')
 
     def get_thread_info(self):
         """ Get information about all threads known to GDB, and the current thread ID """
