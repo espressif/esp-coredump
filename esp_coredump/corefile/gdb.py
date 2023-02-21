@@ -8,9 +8,11 @@ import logging
 import re
 import time
 
-from pygdbmi.gdbcontroller import DEFAULT_GDB_TIMEOUT_SEC, GdbController
+from pygdbmi.gdbcontroller import GdbController
 
 from . import ESPCoreDumpError
+
+DEFAULT_GDB_TIMEOUT_SEC = 3
 
 
 class EspGDB(object):
@@ -97,7 +99,7 @@ class EspGDB(object):
 
     def get_thread_info(self):
         """ Get information about all threads known to GDB, and the current thread ID """
-        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result', response_delay_sec=2)['payload']
+        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result', response_delay_sec=DEFAULT_GDB_TIMEOUT_SEC)['payload']
         if not result:
             return None, None
 
