@@ -245,7 +245,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                 EspCoreDumpV2Header.build(self.core_src.header) + self.core_src.data) & 0xffffffff  # type: ignore
         if data_crc != self.core_src.checksum:  # type: ignore
             raise ESPCoreDumpLoaderError(
-                'Invalid core dump CRC %x, should be %x' % (data_crc, self.core_src.crc))  # type: ignore
+                'Invalid core dump CRC %x, should be %x' % (data_crc, self.core_src.checksum))  # type: ignore
 
     def _sha256_validate(self):  # type: () -> None
         if self.dump_ver in [self.ELF_SHA256_V2_1]:
