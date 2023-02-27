@@ -9,6 +9,8 @@
 import os
 import subprocess
 import sys
+import textwrap
+from contextlib import contextmanager
 from distutils.spawn import find_executable
 from shutil import copyfile
 from typing import List, Optional, Tuple, Union
@@ -32,7 +34,7 @@ from .corefile.elf import (TASK_STATUS_CORRECT, ElfFile, ElfSegment,
                            ESPCoreDumpElfFile, EspTaskStatus)
 from .corefile.gdb import EspGDB
 from .corefile.loader import (ESPCoreDumpFileLoader, ESPCoreDumpFlashLoader,
-                              EspCoreDumpVersion)
+                              ESPCoreDumpLoaderError, EspCoreDumpVersion)
 
 IDF_PATH = os.getenv('IDF_PATH')
 
@@ -350,13 +352,29 @@ class CoreDump:
             print('.coredump.%s 0x%x 0x%x %s' % (seg_name, cs.addr, len(cs.data), cs.attr_str()))
             print(self.gdb_esp.run_cmd('x/%dx 0x%x' % (len(cs.data) // 4, cs.addr)))
 
+    @contextmanager
+    def _handle_coredump_loader_error(self):
+        try:
+            yield
+        except ESPCoreDumpLoaderError as e:
+            print(f'Failed to load core dump: {e}', file=sys.stderr)
+            if e.extra_output:
+                print('', file=sys.stderr)
+                print('┌────── Additional information about the error: ', file=sys.stderr)
+                print('│   ', file=sys.stderr)
+                print(textwrap.indent(e.extra_output, '│   '), file=sys.stderr)
+                print('│   ', file=sys.stderr)
+                print('└────── end of additional information about the error.', file=sys.stderr)
+            raise SystemExit(1)
+
     def dbg_corefile(self):  # type: () -> Optional[list[str]]
         """
         Command to load core dump from file or flash and run GDB debug session with it
         """
         exe_elf = ESPCoreDumpElfFile(self.prog)
-        core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=exe_elf.e_machine)
-        self.core_elf = ESPCoreDumpElfFile(core_elf_path)
+        with self._handle_coredump_loader_error():
+            core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=exe_elf.e_machine)
+            self.core_elf = ESPCoreDumpElfFile(core_elf_path)
 
         if target is None:
             target = self.get_target()
@@ -375,8 +393,9 @@ class CoreDump:
         Command to load core dump from file or flash and print it's data in user friendly form
         """
         self.exe_elf = ESPCoreDumpElfFile(self.prog)
-        core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=self.exe_elf.e_machine)
-        self.core_elf = ESPCoreDumpElfFile(core_elf_path)
+        with self._handle_coredump_loader_error():
+            core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=self.exe_elf.e_machine)
+            self.core_elf = ESPCoreDumpElfFile(core_elf_path)
 
         if target is None:
             target = self.get_target()
