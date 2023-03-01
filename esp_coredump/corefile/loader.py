@@ -430,19 +430,14 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
 
     def _get_core_src(self, off, target=None):  # type: (Optional[int], Optional[str]) -> None
         """
-        Loads core dump from flash using parttool or elftool (if offset is set)
+        Loads core dump from flash using parttool or esptool (if offset is set)
         """
-        try:
-            if off:
-                logging.info('Invoke esptool to read image.')
-                self._invoke_esptool(off=off, target=target)
-            else:
-                logging.info('Invoke parttool to read image.')
-                self._invoke_parttool()
-        except subprocess.CalledProcessError as e:
-            if e.output:
-                logging.info(e.output)
-            logging.error('Error during the subprocess execution')
+        if off:
+            logging.info('Invoke esptool to read image.')
+            self._invoke_esptool(off=off, target=target)
+        else:
+            logging.info('Invoke parttool to read image.')
+            self._invoke_parttool()
 
     def _invoke_esptool(self, off=None, target=None):  # type: (Optional[int], Optional[str]) -> None
         """
@@ -471,7 +466,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             tool_args.append(self.core_src_file)  # type: ignore
 
             # read core dump length
-            et_out = subprocess.check_output(tool_args)
+            et_out = subprocess.check_output(tool_args, stderr=subprocess.STDOUT)
             if et_out:
                 logging.info(et_out.decode('utf-8'))
 
@@ -484,15 +479,13 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
                 coredump_len = header.tot_len
             # set actual size of core dump image and read it from flash
             tool_args[-2] = str(coredump_len)
-            et_out = subprocess.check_output(tool_args)
+            et_out = subprocess.check_output(tool_args, stderr=subprocess.STDOUT)
             if et_out:
                 logging.info(et_out.decode('utf-8'))
         except subprocess.CalledProcessError as e:
-            logging.error('esptool script execution failed with err %d', e.returncode)
-            logging.debug("Command ran: '%s'", e.cmd)
-            logging.debug('Command out:')
-            logging.debug(e.output)
-            raise e
+            raise ESPCoreDumpLoaderError(f'esptool script execution failed with error {e.returncode}, '
+                                         f"failed command was: '{e.cmd}'",
+                                         extra_output=e.output.decode('utf-8', 'ignore'))
 
     def _invoke_parttool(self):  # type: () -> None
         """
@@ -507,15 +500,13 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
         try:
             tool_args.append(self.core_src_file)  # type: ignore
             # read core dump partition
-            et_out = subprocess.check_output(tool_args)
+            et_out = subprocess.check_output(tool_args, stderr=subprocess.STDOUT)
             if et_out:
                 logging.info(et_out.decode('utf-8'))
         except subprocess.CalledProcessError as e:
-            logging.error('parttool script execution failed with err %d', e.returncode)
-            logging.debug("Command ran: '%s'", e.cmd)
-            logging.debug('Command out:')
-            logging.debug(e.output)
-            raise e
+            raise ESPCoreDumpLoaderError(f'parttool script execution failed with error {e.returncode}, '
+                                         "failed command was: '{}'".format(' '.join(e.cmd)),
+                                         extra_output=e.output.decode('utf-8', 'ignore'))
 
     def _get_core_dump_partition_info(self, part_off=None):  # type: (Optional[int]) -> Tuple[int, int]
         """
@@ -537,12 +528,9 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             offset = int(offset_str, 16)
             logging.info('Core dump partition offset=%d, size=%d', offset, size)
         except subprocess.CalledProcessError as e:
-            logging.error('parttool get partition info failed with err %d', e.returncode)
-            logging.debug("Command ran: '%s'", e.cmd)
-            logging.debug('Command out:')
-            logging.debug(e.output)
-            logging.error('Check if the coredump partition exists in partition table.')
-            raise e
+            raise ESPCoreDumpLoaderError(f'parttool script execution failed with error {e.returncode}, '
+                                         "failed command was: '{}'".format(' '.join(e.cmd)),
+                                         extra_output=e.output.decode('utf-8', 'ignore'))
         return offset, size
 
 

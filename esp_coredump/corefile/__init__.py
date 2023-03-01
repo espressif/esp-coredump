@@ -25,7 +25,9 @@ class ESPCoreDumpError(RuntimeError):
 
 
 class ESPCoreDumpLoaderError(ESPCoreDumpError):
-    pass
+    def __init__(self, message, extra_output=None) -> None:
+        super().__init__(message)
+        self.extra_output = extra_output
 
 
 class BaseArchMethodsMixin(ABC):  # type: ignore
