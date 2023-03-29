@@ -15,7 +15,7 @@ except ImportError:
     raise ModuleNotFoundError('No module named "esp_coredump" please install esp_coredump by running '
                               '"python -m pip install esp-coredump"')
 
-SUPPORTED_TARGET = ['esp32', 'esp32s2', 'esp32c3', 'esp32s3', 'esp32c2']
+SUPPORTED_TARGET = ['esp32', 'esp32c3']
 APP_TYPE = ['with_rom', 'without_rom']
 COREDUMP_FILE_NAME = 'coredump'
 
