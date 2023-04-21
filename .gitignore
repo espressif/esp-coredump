@@ -114,6 +114,12 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+tests/*/*/coredump.elf
+tests/*/*/coredump.bin
+tests/*/*/output_from_*
+tests/*/coredump.elf
+tests/*/coredump.bin
+tests/*/output_from_*
 # -----------------------------------------------------------------------------
 
 

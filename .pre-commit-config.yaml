@@ -28,3 +28,5 @@ repos:
     rev: 'v0.982'
     hooks:
     -   id: mypy
+
+exclude: "^tests/(esp.+|rom_tests)/.+"

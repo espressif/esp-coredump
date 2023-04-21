@@ -1,5 +1,5 @@
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,9 +8,11 @@ import logging
 import re
 import time
 
-from pygdbmi.gdbcontroller import DEFAULT_GDB_TIMEOUT_SEC, GdbController
+from pygdbmi.gdbcontroller import GdbController
 
 from . import ESPCoreDumpError
+
+DEFAULT_GDB_TIMEOUT_SEC = 3
 
 
 class EspGDB(object):
@@ -93,11 +95,12 @@ class EspGDB(object):
         return ''.join([x['payload'] for x in filtered_responses]) \
             .replace('\\n', '\n') \
             .replace('\\t', '\t') \
-            .rstrip('\n')
+            .rstrip('\n') \
+            .replace('\\"', '"')
 
     def get_thread_info(self):
         """ Get information about all threads known to GDB, and the current thread ID """
-        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result', response_delay_sec=2)['payload']
+        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result', response_delay_sec=DEFAULT_GDB_TIMEOUT_SEC)['payload']
         if not result:
             return None, None
 

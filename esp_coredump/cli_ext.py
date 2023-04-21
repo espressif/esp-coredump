@@ -1,5 +1,5 @@
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -7,11 +7,10 @@
 import argparse
 import os
 
-from pygdbmi.gdbcontroller import DEFAULT_GDB_TIMEOUT_SEC
-
 from esp_coredump import __version__
 
 from .corefile import SUPPORTED_TARGETS
+from .corefile.gdb import DEFAULT_GDB_TIMEOUT_SEC
 
 try:
     # esptool>=4.0
@@ -24,6 +23,8 @@ parser = argparse.ArgumentParser(description='espcoredump.py v%s - ESP32 Core Du
 parser.add_argument('--chip', default=os.environ.get('ESPTOOL_CHIP', 'auto'),
                     choices=['auto'] + SUPPORTED_TARGETS,
                     help='Target chip type')
+parser.add_argument('--chip-rev', type=int,
+                    help='Target chip revision')
 parser.add_argument('--port', '-p', default=os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT),
                     help='Serial port device')
 parser.add_argument('--baud', '-b', type=int,

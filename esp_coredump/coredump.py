@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -13,9 +13,11 @@ import textwrap
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from shutil import copyfile
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import serial
+
+from .tools import load_json_from_file
 
 try:
     # esptool>=4.0
@@ -27,16 +29,17 @@ except (AttributeError, ModuleNotFoundError):
     detect_chip = ESPLoader.detect_chip
 
 from construct import Container, GreedyRange, Int32ul, ListContainer, Struct
-from pygdbmi.gdbcontroller import DEFAULT_GDB_TIMEOUT_SEC
 
 from .corefile import RISCV_TARGETS, SUPPORTED_TARGETS, XTENSA_TARGETS, xtensa
 from .corefile.elf import (TASK_STATUS_CORRECT, ElfFile, ElfSegment,
                            ESPCoreDumpElfFile, EspTaskStatus)
-from .corefile.gdb import EspGDB
+from .corefile.gdb import DEFAULT_GDB_TIMEOUT_SEC, EspGDB
 from .corefile.loader import (ESPCoreDumpFileLoader, ESPCoreDumpFlashLoader,
                               ESPCoreDumpLoaderError, EspCoreDumpVersion)
 
-IDF_PATH = os.getenv('IDF_PATH')
+IDF_PATH = os.getenv('IDF_PATH', '')
+ESP_ROM_ELF_DIR = os.getenv('ESP_ROM_ELF_DIR')
+ROMS_JSON = os.path.join(IDF_PATH, 'tools', 'idf_py_actions', 'roms.json')  # type: ignore
 
 MORE_INFO_MSG = 'Read more: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html'
 GDB_NOT_FOUND_ERROR = (
@@ -60,6 +63,7 @@ class CoreDump:
                  port: str = os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT),
                  gdb_timeout_sec: int = DEFAULT_GDB_TIMEOUT_SEC,
                  core: Optional[str] = None,
+                 chip_rev: Optional[int] = None,
                  gdb: Optional[str] = None,
                  extra_gdbinit_file: Optional[str] = None,
                  off: Optional[int] = None,
@@ -74,6 +78,7 @@ class CoreDump:
         self.baud = baud
         self.chip = chip
         self.core = core
+        self.chip_rev = chip_rev
         self.core_format = core_format
         self.gdb = gdb
         self.gdb_timeout_sec = gdb_timeout_sec
@@ -98,12 +103,27 @@ class CoreDump:
                     sym_cmd = 'add-symbol-file %s 0x%x' % (elf_path, s.addr)
         return sym_cmd
 
-    def get_core_dump_elf(self, e_machine=ESPCoreDumpFileLoader.ESP32):
-        # type: (Optional[int]) -> Tuple[str, Optional[str], Optional[list[str]]]
+    def extract_chip_rev_from_elf(self):
+        if not os.path.exists(self.core):
+            raise FileNotFoundError(f"Provided ELF file {self.core} is not found or doesn't exist")
+        elf = ElfFile(elf_path=self.core)
+        chip_rev = None
+        for s in elf.note_segments:
+            for n in s.note_secs:
+                if b'ESP_CHIP_REV' in n.name:
+                    chip_rev = int.from_bytes(n.desc, 'little')
+                    break
+
+        return chip_rev
+
+    def get_core_header_info_dict(self, e_machine=ESPCoreDumpElfFile.EM_XTENSA):
         loader = None  # type: Union[ESPCoreDumpFlashLoader, ESPCoreDumpFileLoader, None]
-        core_filename = None
-        target = None
-        temp_files = None
+        core_dump_info_map = {
+            'core_elf_path': None,
+            'target': None,
+            'temp_files': None,
+            'chip_rev': None,
+        }
 
         if not self.core:
             # Core file not specified, try to read core dump from flash.
@@ -116,19 +136,28 @@ class CoreDump:
             loader = ESPCoreDumpFileLoader(self.core, self.core_format == 'b64')
         else:
             # Core file is already in the ELF format
-            core_filename = self.core
+            core_dump_info_map['core_elf_path'] = self.core
+            chip_rev = self.extract_chip_rev_from_elf()
+
+            if self.chip_rev is not None and chip_rev != self.chip_rev:
+                print('Provided chip revision does not match the one extracted from the provided coredump elf file.',
+                      file=sys.stderr)
+                exit(1)
+
+            core_dump_info_map['chip_rev'] = chip_rev
 
         # Load/convert the core file
         if loader:
             loader.create_corefile(exe_name=self.prog, e_machine=e_machine)
-            core_filename = loader.core_elf_file
+            core_dump_info_map['core_elf_path'] = loader.core_elf_file
             if self.save_core:
                 # We got asked to save the core file, make a copy
                 copyfile(loader.core_elf_file, self.save_core)
-            target = loader.target
-            temp_files = loader.temp_files
+            core_dump_info_map['target'] = loader.target
+            core_dump_info_map['chip_rev'] = loader.chip_rev
+            core_dump_info_map['temp_files'] = loader.temp_files
 
-        return core_filename, target, temp_files  # type: ignore
+        return core_dump_info_map
 
     def get_chip_version(self):  # type: () -> Optional[int]
         for segment in self.core_elf.note_segments:
@@ -139,7 +168,6 @@ class CoreDump:
         return None
 
     def get_target(self):  # type: () -> str
-        target = None
 
         if self.chip != 'auto':
             return self.chip  # type: ignore
@@ -158,12 +186,15 @@ class CoreDump:
             if chip_version == EspCoreDumpVersion.ESP32C3:
                 return 'esp32c3'
 
+        target = None
         try:
             inst = detect_chip(self.port, self.baud)
         except serial.serialutil.SerialException:
-            print('Unable to identify the chip type. Please use the --chip option to specify the chip type or '
-                  'connect the board and provide the --port option to have the chip type determined automatically.')
-            exit(0)
+            print('Unable to identify the chip type. '
+                  'Please use the --chip option to specify the chip type or '
+                  'connect the board and provide the --port option to have the chip type determined automatically.',
+                  file=sys.stderr)
+            exit(1)
         else:
             target = inst.CHIP_NAME.lower().replace('-', '')
 
@@ -180,20 +211,19 @@ class CoreDump:
         elif target in RISCV_TARGETS:
             gdb_path = 'riscv32-esp-elf-gdb'
         else:
-            raise ValueError('Invalid value: {}. For now we only support {}'.format(target, SUPPORTED_TARGETS))
+            raise ValueError(f'Invalid value: {target}. For now we only support {SUPPORTED_TARGETS}')
         if not find_executable(gdb_path):
             return None
 
         return gdb_path
 
-    def get_gdb_args(self, target, core_elf_path, is_dbg_mode=False):
-        # type: (str, Optional[str], bool) -> List[str]
+    def get_gdb_args(self, target, core_elf_path, chip_rev, is_dbg_mode=False):
         gdb_tool = self.get_gdb_path(target)
         if not gdb_tool:
             print(GDB_NOT_FOUND_ERROR)
             sys.exit(1)
 
-        rom_elf_path = self.get_rom_elf_path(target)
+        rom_elf_path = self.get_rom_elf_path(target=target, chip_rev=chip_rev)
         rom_sym_cmd = self.load_aux_elf(rom_elf_path)
 
         gdb_args = [gdb_tool]
@@ -217,11 +247,39 @@ class CoreDump:
 
         return gdb_args
 
-    def get_rom_elf_path(self, target):  # type: (str) -> str
+    def get_rom_elf_path(self, chip_rev, target):  # type: (Optional[int], str) -> str
         if self.rom_elf:
-            return self.rom_elf  # type: ignore
+            return self.rom_elf
 
-        return '{}_rom.elf'.format(target)
+        if chip_rev is None:
+            return ''
+
+        rom_file_path = ''
+
+        if not IDF_PATH:
+            print("The ROM ELF file won't be loaded automatically since you are running the utility out of IDF.")
+            return rom_file_path
+
+        roms_json = load_json_from_file(ROMS_JSON)
+        target_roms = roms_json.get(target, [])
+
+        if not target_roms:
+            print("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
+            return rom_file_path
+
+        index = len(target_roms)
+        for idx in range(len(target_roms)):
+            if target_roms[idx].get('rev') == chip_rev:
+                index = idx
+                break
+        if index < len(target_roms):
+            chip_rev_from_json = target_roms[index]['rev']
+            rom_elf_file_name = f'{target}_rev{chip_rev_from_json}_rom.elf'
+            rom_file_path = os.path.join(ESP_ROM_ELF_DIR, rom_elf_file_name)  # type: ignore
+        else:
+            print("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
+
+        return rom_file_path
 
     def get_task_info_extra_note_tuple(self):  # type: () -> Tuple[Optional[list[str]], Optional[Container]]
         extra_note = None
@@ -250,7 +308,9 @@ class CoreDump:
 
         if not threads:
             print('\nThe threads information for the current task could not be retrieved. '
-                  'Please try running this command again.')
+                  'Please try running this command again with --gdb-timeout-sec option to increase '
+                  f'the default value of internal delay for gdb responses (Default: {DEFAULT_GDB_TIMEOUT_SEC})')
+            return
 
         for thr in threads:
             thr_id = int(thr['id'])
@@ -352,6 +412,13 @@ class CoreDump:
             print('.coredump.%s 0x%x 0x%x %s' % (seg_name, cs.addr, len(cs.data), cs.attr_str()))
             print(self.gdb_esp.run_cmd('x/%dx 0x%x' % (len(cs.data) // 4, cs.addr)))
 
+    def verify_target(self, core_header_info_dict):
+        target = core_header_info_dict.get('target')
+        if target is None:
+            target = self.get_target()
+            core_header_info_dict['target'] = target
+        return target
+
     @contextmanager
     def _handle_coredump_loader_error(self):
         try:
@@ -373,32 +440,33 @@ class CoreDump:
         """
         exe_elf = ESPCoreDumpElfFile(self.prog)
         with self._handle_coredump_loader_error():
-            core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=exe_elf.e_machine)
-            self.core_elf = ESPCoreDumpElfFile(core_elf_path)
+            core_header_info_dict = self.get_core_header_info_dict(e_machine=exe_elf.e_machine)
+            self.core_elf = ESPCoreDumpElfFile(core_header_info_dict['core_elf_path'])
 
-        if target is None:
-            target = self.get_target()
+        temp_files = core_header_info_dict.pop('temp_files')
+        self.chip = self.verify_target(core_header_info_dict)
 
-        gdb_args = self.get_gdb_args(target, core_elf_path, is_dbg_mode=True)
+        gdb_args = self.get_gdb_args(is_dbg_mode=True, **core_header_info_dict)
+
         p = subprocess.Popen(bufsize=0,
                              args=gdb_args,
                              stdin=None, stdout=None, stderr=None,
                              close_fds=CLOSE_FDS)
         p.wait()
         print('Done!')
-        return temp_files
+        return temp_files  # type: ignore
 
     def info_corefile(self):  # type: () -> Optional[list[str]]
         """
         Command to load core dump from file or flash and print it's data in user friendly form
         """
-        self.exe_elf = ESPCoreDumpElfFile(self.prog)
         with self._handle_coredump_loader_error():
-            core_elf_path, target, temp_files = self.get_core_dump_elf(e_machine=self.exe_elf.e_machine)
-            self.core_elf = ESPCoreDumpElfFile(core_elf_path)
+            self.exe_elf = ESPCoreDumpElfFile(self.prog)
+            core_header_info_dict = self.get_core_header_info_dict(e_machine=self.exe_elf.e_machine)
+            self.core_elf = ESPCoreDumpElfFile(core_header_info_dict['core_elf_path'])
 
-        if target is None:
-            target = self.get_target()
+        temp_files = core_header_info_dict.pop('temp_files')
+        self.chip = self.verify_target(core_header_info_dict)
 
         if self.exe_elf.e_machine != self.core_elf.e_machine:
             raise ValueError('The arch should be the same between core elf and exe elf')
@@ -408,7 +476,7 @@ class CoreDump:
         print('===============================================================')
         print('==================== ESP32 CORE DUMP START ====================')
 
-        gdb_args = self.get_gdb_args(target, core_elf_path, is_dbg_mode=False)
+        gdb_args = self.get_gdb_args(is_dbg_mode=False, **core_header_info_dict)
 
         self.gdb_esp = EspGDB(gdb_args, timeout_sec=self.gdb_timeout_sec)
 
@@ -438,4 +506,4 @@ class CoreDump:
 
         del self.gdb_esp
         print('Done!')
-        return temp_files
+        return temp_files  # type: ignore
