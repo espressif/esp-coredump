@@ -98,9 +98,9 @@ class EspGDB(object):
             .rstrip('\n') \
             .replace('\\"', '"')
 
-    def get_thread_info(self):
+    def get_thread_info(self, response_delay_sec=DEFAULT_GDB_TIMEOUT_SEC):
         """ Get information about all threads known to GDB, and the current thread ID """
-        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result', response_delay_sec=DEFAULT_GDB_TIMEOUT_SEC)['payload']
+        result = self._gdbmi_run_cmd_get_one_response('-thread-info', 'done', 'result', response_delay_sec=response_delay_sec)['payload']
         if not result:
             return None, None
 

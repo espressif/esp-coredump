@@ -48,6 +48,8 @@ GDB_NOT_FOUND_ERROR = (
 )
 IDF_SETUP_ERROR = f'Please set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
 
+RETRY_ATTEMPTS = 3
+
 
 if os.name == 'nt':
     CLOSE_FDS = False
@@ -306,7 +308,12 @@ class CoreDump:
     def print_threads_info(self, task_info):  # type: (Optional[list[Container]]) -> None
         print(self.gdb_esp.run_cmd('info threads'))
         # THREADS STACKS
-        threads, _ = self.gdb_esp.get_thread_info()
+        for attempt in range(1, RETRY_ATTEMPTS + 1):
+            threads, _ = self.gdb_esp.get_thread_info(attempt * DEFAULT_GDB_TIMEOUT_SEC)
+            if threads:
+                break
+
+            print('Retrying reading threads information...')
 
         if not threads:
             print('\nThe threads information for the current task could not be retrieved. '
