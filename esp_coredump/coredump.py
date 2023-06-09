@@ -67,6 +67,7 @@ class CoreDump:
                  gdb: Optional[str] = None,
                  extra_gdbinit_file: Optional[str] = None,
                  off: Optional[int] = None,
+                 parttable_off: Optional[int] = None,
                  prog: Optional[str] = None,
                  print_mem: Optional[str] = None,
                  rom_elf: Optional[str] = None,
@@ -83,7 +84,8 @@ class CoreDump:
         self.gdb = gdb
         self.gdb_timeout_sec = gdb_timeout_sec
         self.extra_gdbinit_file = extra_gdbinit_file
-        self.off = off
+        self.coredump_off = off
+        self.parttable_off = parttable_off
         self.prog = prog
         self.port = port
         self.print_mem = print_mem
@@ -130,7 +132,7 @@ class CoreDump:
             if not IDF_PATH:
                 print(IDF_SETUP_ERROR)
                 sys.exit(1)
-            loader = ESPCoreDumpFlashLoader(self.off, self.chip, port=self.port, baud=self.baud)
+            loader = ESPCoreDumpFlashLoader(self.coredump_off, port=self.port, baud=self.baud, part_table_offset=self.parttable_off)
         elif self.core_format != 'elf':
             # Core file specified, but not yet in ELF format. Convert it from raw or base64 into ELF.
             loader = ESPCoreDumpFileLoader(self.core, self.core_format == 'b64')
