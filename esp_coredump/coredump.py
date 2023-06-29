@@ -48,6 +48,8 @@ GDB_NOT_FOUND_ERROR = (
 )
 IDF_SETUP_ERROR = f'Please set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
 
+RETRY_ATTEMPTS = 3
+
 
 if os.name == 'nt':
     CLOSE_FDS = False
@@ -67,6 +69,7 @@ class CoreDump:
                  gdb: Optional[str] = None,
                  extra_gdbinit_file: Optional[str] = None,
                  off: Optional[int] = None,
+                 parttable_off: Optional[int] = None,
                  prog: Optional[str] = None,
                  print_mem: Optional[str] = None,
                  rom_elf: Optional[str] = None,
@@ -83,7 +86,8 @@ class CoreDump:
         self.gdb = gdb
         self.gdb_timeout_sec = gdb_timeout_sec
         self.extra_gdbinit_file = extra_gdbinit_file
-        self.off = off
+        self.coredump_off = off
+        self.parttable_off = parttable_off
         self.prog = prog
         self.port = port
         self.print_mem = print_mem
@@ -130,7 +134,7 @@ class CoreDump:
             if not IDF_PATH:
                 print(IDF_SETUP_ERROR)
                 sys.exit(1)
-            loader = ESPCoreDumpFlashLoader(self.off, self.chip, port=self.port, baud=self.baud)
+            loader = ESPCoreDumpFlashLoader(self.coredump_off, port=self.port, baud=self.baud, part_table_offset=self.parttable_off)
         elif self.core_format != 'elf':
             # Core file specified, but not yet in ELF format. Convert it from raw or base64 into ELF.
             loader = ESPCoreDumpFileLoader(self.core, self.core_format == 'b64')
@@ -304,7 +308,12 @@ class CoreDump:
     def print_threads_info(self, task_info):  # type: (Optional[list[Container]]) -> None
         print(self.gdb_esp.run_cmd('info threads'))
         # THREADS STACKS
-        threads, _ = self.gdb_esp.get_thread_info()
+        for attempt in range(1, RETRY_ATTEMPTS + 1):
+            threads, _ = self.gdb_esp.get_thread_info(attempt * DEFAULT_GDB_TIMEOUT_SEC)
+            if threads:
+                break
+
+            print('Retrying reading threads information...')
 
         if not threads:
             print('\nThe threads information for the current task could not be retrieved. '
