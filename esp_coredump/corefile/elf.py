@@ -151,7 +151,6 @@ class ElfFile(object):
         sha256.update(elf_bytes)
         self.sha256 = sha256.digest()
 
-
     @staticmethod
     def _parse_string_table(byte_str, offset):  # type: (bytes, int) -> str
         section_name_str = byte_str[offset:]
@@ -299,9 +298,10 @@ EspTaskStatus = Struct(
 
 
 class ESPCoreDumpElfFile(ElfFile):
-    PT_INFO = 8266
-    PT_TASK_INFO = 678
-    PT_EXTRA_INFO = 677
+    PT_ESP_INFO = 8266
+    PT_ESP_PANIC_DETAILS = 679
+    PT_ESP_TASK_INFO = 678
+    PT_ESP_EXTRA_INFO = 677
 
     CURR_TASK_MARKER = 0xdeadbeef
 

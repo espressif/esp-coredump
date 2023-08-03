@@ -294,7 +294,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         if self.chip_rev is not None:  # type: ignore
             chip_rev_note = b''
             chip_rev_note += self._build_note_section('ESP_CHIP_REV',
-                                                      ESPCoreDumpElfFile.PT_INFO,
+                                                      ESPCoreDumpElfFile.PT_ESP_INFO,
                                                       Int32ul.build(self.chip_rev))  # type: ignore
             try:
                 core_elf.add_segment(0, chip_rev_note, ElfFile.PT_NOTE, 0)
@@ -308,7 +308,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
             for note_sec in seg.note_secs:
                 # Check for version info note
                 if note_sec.name == b'ESP_CORE_DUMP_INFO' \
-                        and note_sec.type == ESPCoreDumpElfFile.PT_INFO \
+                        and note_sec.type == ESPCoreDumpElfFile.PT_ESP_INFO \
                         and exe_name:
                     exe_elf = ElfFile(exe_name)
                     app_sha256 = binascii.hexlify(exe_elf.sha256)
@@ -432,7 +432,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                 raise ESPCoreDumpLoaderError(str(e))
 
             task_info_notes += self._build_note_section('TASK_INFO',
-                                                        ESPCoreDumpElfFile.PT_TASK_INFO,
+                                                        ESPCoreDumpElfFile.PT_ESP_TASK_INFO,
                                                         EspTaskStatus.build(task_status_kwargs))
             notes += self._build_note_section('CORE',
                                               ElfFile.PT_LOAD,
@@ -441,7 +441,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
 
             if len(core_dump_info_notes) == 0:  # the first task is the crashed task
                 core_dump_info_notes += self._build_note_section('ESP_CORE_DUMP_INFO',
-                                                                 ESPCoreDumpElfFile.PT_INFO,
+                                                                 ESPCoreDumpElfFile.PT_ESP_INFO,
                                                                  Int32ul.build(self.header.ver))  # type: ignore
                 _regs = [task.task_header.tcb_addr]
 
@@ -452,7 +452,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
 
                 core_dump_info_notes += self._build_note_section(
                     'EXTRA_INFO',
-                    ESPCoreDumpElfFile.PT_EXTRA_INFO,
+                    ESPCoreDumpElfFile.PT_ESP_EXTRA_INFO,
                     Int32ul[len(_regs)].build(_regs)
                 )
 

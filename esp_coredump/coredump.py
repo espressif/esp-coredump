@@ -166,7 +166,7 @@ class CoreDump:
     def get_chip_version(self):  # type: () -> Optional[int]
         for segment in self.core_elf.note_segments:
             for sec in segment.note_secs:
-                if sec.type == ESPCoreDumpElfFile.PT_INFO:
+                if sec.type == ESPCoreDumpElfFile.PT_ESP_INFO:
                     ver_bytes = sec.desc[:4]
                     return int((ver_bytes[3] << 8) | ver_bytes[2])
         return None
@@ -299,12 +299,19 @@ class CoreDump:
         task_info = []
         for note_seg in self.core_elf.note_segments:
             for note_sec in note_seg.note_secs:
-                if note_sec.type == ESPCoreDumpElfFile.PT_EXTRA_INFO and 'EXTRA_INFO' in note_sec.name.decode('ascii'):
+                if note_sec.type == ESPCoreDumpElfFile.PT_ESP_EXTRA_INFO:
                     extra_note = note_sec
-                if note_sec.type == ESPCoreDumpElfFile.PT_TASK_INFO and 'TASK_INFO' in note_sec.name.decode('ascii'):
+                if note_sec.type == ESPCoreDumpElfFile.PT_ESP_TASK_INFO:
                     task_info_struct = EspTaskStatus.parse(note_sec.desc)
                     task_info.append(task_info_struct)
         return task_info, extra_note
+
+    def get_panic_details(self):
+        for note_seg in self.core_elf.note_segments:
+            for note_sec in note_seg.note_secs:
+                if note_sec.type == ESPCoreDumpElfFile.PT_ESP_PANIC_DETAILS:
+                    return note_sec
+        return None
 
     def print_crashed_task_info(self, marker):  # type: (Optional[int]) -> None
         if marker == ESPCoreDumpElfFile.CURR_TASK_MARKER:
@@ -503,6 +510,10 @@ class CoreDump:
             extra_info = Struct('regs' / GreedyRange(Int32ul)).parse(extra_note.desc).regs
             marker = extra_info[0]
             self.print_crashed_task_info(marker)
+
+        panic_details = self.get_panic_details()
+        if panic_details:
+            print('Panic reason: ' + panic_details.desc.decode('utf-8'))
 
         print('\n================== CURRENT THREAD REGISTERS ===================')
         # Only xtensa have exception registers
