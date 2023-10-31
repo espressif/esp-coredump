@@ -76,6 +76,16 @@ a15            0x0                 0
   5    process 1073412616 0x4000bff0 in _xtos_set_intlevel ()
   6    process 1073412272 0x4000bff0 in _xtos_set_intlevel ()
 
+
+       TCB             NAME PRIO C/B  STACK USED/FREE
+---------- ---------------- -------- ----------------
+0x3ffafba0             main      1/1         368/3716
+0x3ffafcf8             IDLE      0/0         288/1232
+0x3ffafe50             IDLE      0/0         416/1116
+0x3ffaf354             ipc0    24/24          448/560
+0x3ffafa08        esp_timer    22/22         432/3656
+0x3ffaf8b0             ipc1    24/24          448/564
+
 ==================== THREAD 1 (TCB: 0x3ffafba0, name: 'main') =====================
 #0  0x40081191 in panic_abort (details=0x3ffb5e0b "abort() was called at PC 0x400d6561 on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:452
 #1  0x400850dc in esp_system_abort (details=0x3ffb5e0b "abort() was called at PC 0x400d6561 on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:93

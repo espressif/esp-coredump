@@ -55,6 +55,13 @@ pc             0x4038062a	0x4038062a <panic_abort+18>
   2    process 1070137744 vPortTaskWrapper (pxCode=0x403843e8 <prvIdleTask>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:242
   3    process 1070131352 0x4038543e in vPortClearInterruptMask (mask=1) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:489
 
+
+       TCB             NAME PRIO C/B  STACK USED/FREE
+---------- ---------------- -------- ----------------
+0x3fc8fa34             main      1/1         160/3920
+0x3fc90190             IDLE      0/0         160/1364
+0x3fc8e898        esp_timer    22/22         224/3868
+
 ==================== THREAD 1 (TCB: 0x3fc8fa34, name: 'main') =====================
 #0  panic_abort (details=details@entry=0x3fc8f89c "abort() was called at PC 0x42008a3f on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:452
 #1  0x403835a8 in esp_system_abort (details=details@entry=0x3fc8f89c "abort() was called at PC 0x42008a3f on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:93

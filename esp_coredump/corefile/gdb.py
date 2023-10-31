@@ -72,13 +72,28 @@ class EspGDB(object):
         return self._gdbmi_run_cmd_get_one_response("-data-evaluate-expression \"%s\"" % expr,
                                                     'done', 'result')['payload']['value']
 
-    def get_freertos_task_name(self, tcb_addr):
-        """ Get FreeRTOS task name given the TCB address """
+    def get_tcb_variable(self, tcb_addr, variable):
+        """ Get FreeRTOS variable from given TCB address """
         try:
-            val = self._gdbmi_data_evaluate_expression('(char*)((TCB_t *)0x%x)->pcTaskName' % tcb_addr)
+            val = self._gdbmi_data_evaluate_expression('(char*)((TCB_t *)0x%x)->%s' % (tcb_addr, variable))
         except (ESPCoreDumpError, KeyError):
             # KeyError is raised when "value" is not in "payload"
             return ''
+        return val
+
+    def parse_tcb_variable(self, tcb_addr, variable):
+        """ Get FreeRTOS variable from given TCB address """
+        val = self.get_tcb_variable(tcb_addr, variable)
+
+        # Value is of form '0x12345678 ""'
+        result = re.search(r'0x[0-9a-fA-F]+', val)
+        if result:
+            return result.group(0)
+        return ''
+
+    def get_freertos_task_name(self, tcb_addr):
+        """ Get FreeRTOS task name given the TCB address """
+        val = self.get_tcb_variable(tcb_addr, 'pcTaskName')
 
         # Value is of form '0x12345678 "task_name"', extract the actual name
         result = re.search(r"\"([^']*)\"$", val)

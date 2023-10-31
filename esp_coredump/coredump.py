@@ -337,14 +337,35 @@ class CoreDump:
                   f'the default value of internal delay for gdb responses (Default: {DEFAULT_GDB_TIMEOUT_SEC})')
             return
 
+        print('\n')
+        print('       TCB             NAME PRIO C/B  STACK USED/FREE')
+        print('---------- ---------------- -------- ----------------')
+
+        thread_dict = {}
         for thr in threads:
             thr_id = int(thr['id'])
             tcb_addr = self.gdb_esp.gdb2freertos_thread_id(thr['target-id'])
-            task_index = int(thr_id) - 1
             task_name = self.gdb_esp.get_freertos_task_name(tcb_addr)
+            pxEndOfStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxEndOfStack'), 16)
+            pxTopOfStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxTopOfStack'), 16)
+            pxStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxStack'), 16)
+            uxPriority = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'uxPriority'), 16)
+            uxBasePriority = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'uxBasePriority'), 16)
+            thread_dict[thr_id] = {'tcb_addr': tcb_addr, 'task_name': task_name}
+
+            ftcb_addr = '0x{:x}'.format(tcb_addr)
+            fpriority = '{}/{}'.format(uxPriority, uxBasePriority)
+            fstack_usage = '{}/{}'.format(abs(pxEndOfStack - pxTopOfStack), abs(pxStack - pxTopOfStack))
+            print(f'{ftcb_addr:>10}{task_name:>17}{fpriority:>9}{fstack_usage:>17}')
+
+        for thr_id, value in thread_dict.items():
+            tcb_addr = value['tcb_addr']
+            task_index = thr_id - 1
+            task_name = value['task_name']
             self.gdb_esp.switch_thread(thr_id)
             print('\n==================== THREAD {} (TCB: 0x{:x}, name: \'{}\') ====================='
                   .format(thr_id, tcb_addr, task_name))
+
             print(self.gdb_esp.run_cmd('bt'))
             if task_info and task_info[task_index].task_flags != TASK_STATUS_CORRECT:
                 print("The task '%s' is corrupted." % thr_id)
