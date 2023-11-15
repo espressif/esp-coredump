@@ -50,6 +50,8 @@ IDF_SETUP_ERROR = f'Please set up ESP-IDF to complete the action. {MORE_INFO_MSG
 
 RETRY_ATTEMPTS = 3
 
+XTENSA_ISR_CTX_IDX = 37
+RISCV_ISR_CTX_IDX = 1
 
 if os.name == 'nt':
     CLOSE_FDS = False
@@ -383,6 +385,19 @@ class CoreDump:
                 print('Exception registers have not been found!')
         print(self.gdb_esp.run_cmd('info registers'))
 
+    def print_isr_context(self, extra_info):
+        if self.exe_elf.e_machine == ESPCoreDumpElfFile.EM_XTENSA:
+            isr_ctx_idx = XTENSA_ISR_CTX_IDX
+        else:
+            isr_ctx_idx = RISCV_ISR_CTX_IDX
+        if (len(extra_info) < isr_ctx_idx + 1):
+            # no information
+            return
+        if extra_info[isr_ctx_idx]:
+            print('Crash happened in the interrupt context')
+        else:
+            print('Crashed task is not in the interrupt context')
+
     def print_current_thread_stack(self, task_info):  # type: (Optional[list[Container]]) -> None
         print(self.gdb_esp.run_cmd('bt'))
         if task_info and task_info[0].task_flags != TASK_STATUS_CORRECT:
@@ -531,6 +546,7 @@ class CoreDump:
             extra_info = Struct('regs' / GreedyRange(Int32ul)).parse(extra_note.desc).regs
             marker = extra_info[0]
             self.print_crashed_task_info(marker)
+            self.print_isr_context(extra_info)
 
         panic_details = self.get_panic_details()
         if panic_details:
