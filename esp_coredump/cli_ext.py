@@ -44,9 +44,9 @@ common_args.add_argument('--extra-gdbinit-file', '-ex',
                          help='Path to additional gdbinit file')
 common_args.add_argument('--core', '-c',
                          help='Path to core dump file (if skipped core dump will be read from flash)')
-common_args.add_argument('--core-format', '-t', choices=['b64', 'elf', 'raw'], default='elf',
-                         help='File specified with "-c" is an ELF ("elf"), '
-                              'raw (raw) or base64-encoded (b64) binary')
+common_args.add_argument('--core-format', '-t', choices=['auto', 'b64', 'elf', 'raw'], default='auto',
+                         help='File specified with "-c" is an ELF (elf), raw (raw) or base64-encoded (b64) binary. '
+                         'For autodetection based on file header use "auto".')
 common_args.add_argument('--off', '-o', type=int,
                          help='Offset of coredump partition in flash (type "make partition_table" to see).')
 common_args.add_argument('--save-core', '-s',

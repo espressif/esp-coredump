@@ -35,7 +35,8 @@ from .corefile.elf import (TASK_STATUS_CORRECT, ElfFile, ElfSegment,
                            ESPCoreDumpElfFile, EspTaskStatus)
 from .corefile.gdb import DEFAULT_GDB_TIMEOUT_SEC, EspGDB
 from .corefile.loader import (ESPCoreDumpFileLoader, ESPCoreDumpFlashLoader,
-                              ESPCoreDumpLoaderError, EspCoreDumpVersion)
+                              ESPCoreDumpLoaderError, EspCoreDumpVersion,
+                              get_core_file_format)
 
 IDF_PATH = os.getenv('IDF_PATH', '')
 ESP_ROM_ELF_DIR = os.getenv('ESP_ROM_ELF_DIR')
@@ -63,7 +64,7 @@ class CoreDump:
     def __init__(self,
                  baud: Optional[int] = int(os.environ.get('ESPTOOL_BAUD', ESPLoader.ESP_ROM_BAUD)),
                  chip: str = os.environ.get('ESPTOOL_CHIP', 'auto'),
-                 core_format: str = 'elf',
+                 core_format: str = 'auto',
                  port: str = os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT),
                  gdb_timeout_sec: int = DEFAULT_GDB_TIMEOUT_SEC,
                  core: Optional[str] = None,
@@ -84,7 +85,7 @@ class CoreDump:
         self.chip = chip
         self.core = core
         self.chip_rev = chip_rev
-        self.core_format = core_format
+        self.core_format = get_core_file_format(core) if core and core_format == 'auto' else core_format
         self.gdb = gdb
         self.gdb_timeout_sec = gdb_timeout_sec
         self.extra_gdbinit_file = extra_gdbinit_file

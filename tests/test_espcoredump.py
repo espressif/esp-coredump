@@ -22,8 +22,8 @@ TEST_DIR_ABS_PATH = os.path.dirname(__file__)
 ESP_PROG_DIR = os.path.join(TEST_DIR_ABS_PATH, 'test_apps', 'built_apps')
 
 
-def get_coredump_kwargs(core_ext: str, target: str, save_core=False):
-    core_format = 'raw' if core_ext == 'bin' else core_ext
+def get_coredump_kwargs(core_ext: str, target: str, save_core: bool = False, auto_format: bool = False):
+    core_format = 'auto' if auto_format else 'raw' if core_ext == 'bin' else core_ext
     kwargs = {
         'gdb_timeout_sec': 5,
         'chip': target,
@@ -43,8 +43,8 @@ def get_expected_output(target: str):
     return output
 
 
-def get_output(core_ext: str, target: str, save_core=False):
-    kwargs = get_coredump_kwargs(core_ext=core_ext, save_core=save_core, target=target)
+def get_output(core_ext: str, target: str, save_core: bool = False, auto_format: bool = False):
+    kwargs = get_coredump_kwargs(core_ext=core_ext, save_core=save_core, target=target, auto_format=auto_format)
     coredump = CoreDump(**kwargs)
     output_file = os.path.join(TEST_DIR_ABS_PATH, target, f'output_from_{core_ext}')
     with io.StringIO() as buffer, contextlib.redirect_stdout(buffer):
@@ -84,6 +84,18 @@ class TestESPCoreDumpDecode(unittest.TestCase):
             output = get_output(core_ext='bin', target=target)
             expected_output = get_expected_output(target)
             self.assertEqual(expected_output, output)
+
+    def test_coredump_decode_auto_format(self):
+        # make sure that .elf and .bin inputs are created
+        for target in SUPPORTED_TARGET:
+            get_output(core_ext='b64', save_core=True, target=target)
+            decode_from_b64_to_bin(target)
+        for format in ['bin', 'elf', 'b64']:
+            with self.subTest(format=format):
+                for target in SUPPORTED_TARGET:
+                    output = get_output(core_ext=format, target=target, auto_format=True)
+                    expected_output = get_expected_output(target)
+                    self.assertEqual(expected_output, output)
 
 
 class TestESPCoreDumpElfFile(unittest.TestCase):
