@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from base64 import b64decode
 from typing import Optional, Tuple
 
 from construct import (AlignedStruct, Bytes, GreedyRange, Int32ul, Padding,
@@ -68,6 +69,35 @@ MemSegmentHeader = Struct(
     'mem_sz' / Int32ul,
     'data' / Bytes(this.mem_sz),
 )
+
+
+def get_core_file_format(core_file: str) -> str:
+    """Get format of core_file based on the header"""
+    with open(core_file, 'rb') as f:
+        coredump_bytes = f.read(16)
+
+        # Check if this is an ELF file without the core dump header (core_dump_header_t)
+        if coredump_bytes.startswith(b'\x7fELF'):
+            return 'elf'
+
+        # Check if this is a core dump with a core_dump_header_t header
+        core_version = EspCoreDumpVersion(int.from_bytes(coredump_bytes[4:7], 'little'))
+        if core_version.dump_ver in EspCoreDumpLoader.CORE_VERSIONS:
+            return 'raw'
+
+    # Neither of theses headers matched, so this might be a base64 encoded core dump;
+    # however in case it's just some unknown binary, ignore decoding errors.
+    with open(core_file, 'r', encoding='utf-8', errors='ignore') as c:
+        coredump_str = c.read()
+        try:
+            b64decode(coredump_str)
+        except Exception:
+            raise SystemExit(
+                'The format of the provided core-file is not recognized. '
+                'Please ensure that the core-format matches one of the following: ELF (“elf”), '
+                'raw (raw) or base64-encoded (b64) binary'
+            )
+        return 'b64'
 
 
 class EspCoreDumpVersion(object):
@@ -129,6 +159,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
     ELF_CRC32_V2_1 = EspCoreDumpVersion.make_dump_ver(1, 2)
     ELF_SHA256_V2 = EspCoreDumpVersion.make_dump_ver(1, 1)
     ELF_SHA256_V2_1 = EspCoreDumpVersion.make_dump_ver(1, 3)
+    CORE_VERSIONS = [BIN_V1, BIN_V2, BIN_V2_1, ELF_CRC32_V2, ELF_CRC32_V2_1, ELF_SHA256_V2, ELF_SHA256_V2_1]
 
     def __init__(self):  # type: () -> None
         super(EspCoreDumpLoader, self).__init__()
