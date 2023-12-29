@@ -202,6 +202,9 @@ class CoreDump:
             if chip_version == EspCoreDumpVersion.ESP32H2:
                 return 'esp32h2'
 
+            if chip_version == EspCoreDumpVersion.ESP32P4:
+                return 'esp32p4'
+
         target = None
         try:
             inst = detect_chip(self.port, self.baud)
