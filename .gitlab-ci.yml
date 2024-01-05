@@ -1,4 +1,5 @@
 stages:
+  - pre-check
   - codecheck
   - test
   - release
@@ -33,6 +34,13 @@ workflow:
 
 # JOBS
 # ------------------------------------------------------------------------------------------------------
+
+include:
+  - project: espressif/shared-ci-dangerjs
+    ref: master
+    file: danger.yaml
+run-danger-mr-linter:
+  stage: pre-check
 
 # CODE CHECK BY PRE-COMMIT HOOKS
 pre-commit_hooks_MR:
