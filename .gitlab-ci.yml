@@ -77,24 +77,4 @@ test_espcoredump:
     - pip install -e .
     - python esp_coredump/scripts/run_tests.py
 
-
-# Publish a PyPI package
-pypi:
-  stage: release
-  extends: .base_template
-  before_script:
-    - python -m pip install --upgrade pip
-    - python -m pip install setuptools twine
-  variables:
-    TWINE_NON_INTERACTIVE: "true"
-    TWINE_USERNAME: __token__
-    TWINE_PASSWORD: ${PYPI_ESP_COREDUMP_TOKEN}
-  script:
-    - echo "Packaging espcoredump"
-    - python setup.py sdist
-    - python -m pip download esp-coredump==$(python setup.py -V) && exit 0
-    - echo "Publishing new espcoredump version"
-    - python -m twine upload dist/*
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 # ------------------------------------------------------------------------------------------------------
