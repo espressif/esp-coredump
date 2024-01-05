@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "esp-coredump"
+authors = [{name = "Espressif Systems"}]
+license = {file = "LICENSE"}
+description = "Generate core dumps on unrecoverable software errors"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Environment :: Console",
+    "Topic :: Software Development :: Embedded Systems",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: Apache Software License",
+]
+requires-python = ">=3.7"
+dynamic = ['version']
+dependencies = [
+    "construct~=2.10",
+    "pygdbmi>=0.9.0.2",
+    "esptool",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.urls]
+Homepage = "https://github.com/espressif/esp-coredump"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+]
+
+[project.scripts]
+esp-coredump = "esp_coredump.scripts.espcoredump:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages]
+find = {namespaces = false}
+
+[tool.setuptools.dynamic]
+version = {attr = "esp_coredump.__version__"}
+
+[tool.mypy]
+    disallow_incomplete_defs = false # Disallows defining functions with incomplete type annotations
+    disallow_untyped_defs    = false # Disallows defining functions without type annotations or with incomplete type annotations
+    ignore_missing_imports   = true  # Suppress error messages about imports that cannot be resolved
+    python_version           = "3.9" # Specifies the Python version used to parse and check the target program
+    warn_no_return           = true  # Shows errors for missing return statements on some execution paths
+    warn_return_any          = true  # Shows a warning when returning a value with type Any from a function declared with a non- Any return type
