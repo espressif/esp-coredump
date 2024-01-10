@@ -1,4 +1,8 @@
-## Unreleased
+## v1.10.0 (2024-01-10)
+
+### New Features
+
+- **esp-coredump**: add esp32p4 chip support
 
 ## v1.9.0 (2023-12-06)
 
