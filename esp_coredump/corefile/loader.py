@@ -531,14 +531,10 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
 
     def _get_core_src(self, off, target=None):  # type: (Optional[int], Optional[str]) -> None
         """
-        Loads core dump from flash using parttool or esptool (if offset is set)
+        Loads core dump from flash using esptool
         """
-        if off:
-            logging.info('Invoke esptool to read image.')
-            self._invoke_esptool(off=off, target=target)
-        else:
-            logging.info('Invoke parttool to read image.')
-            self._invoke_parttool()
+        logging.info('Invoke esptool to read image.')
+        self._invoke_esptool(off=off, target=target)
 
     def _invoke_esptool(self, off=None, target=None):  # type: (Optional[int], Optional[str]) -> None
         """
@@ -557,9 +553,9 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             (part_offset, part_size) = self._get_core_dump_partition_info()
             if not off:
                 off = part_offset  # set default offset if not specified
-                logging.warning('The core dump image offset is not specified. Use partition offset: %d.', part_offset)
+                logging.warning('The core dump image offset is not specified. Use partition offset: 0x%x.', part_offset)
             if part_offset != off:
-                logging.warning('Predefined image offset: %d does not match core dump partition offset: %d', off,
+                logging.warning('Predefined image offset: %d does not match core dump partition offset: 0x%x', off,
                                 part_offset)
 
             # Here we use V1 format to locate the size
@@ -586,31 +582,6 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
         except subprocess.CalledProcessError as e:
             raise ESPCoreDumpLoaderError(f'esptool script execution failed with error {e.returncode}, '
                                          f"failed command was: '{e.cmd}'",
-                                         extra_output=e.output.decode('utf-8', 'ignore'))
-
-    def _invoke_parttool(self):  # type: () -> None
-        """
-        Loads core dump from flash using parttool
-        """
-        tool_args = [sys.executable, PARTTOOL_PY]
-        if self.port:
-            tool_args.extend(['--port', self.port])
-        if self.baud:
-            tool_args.extend(['--baud', str(self.baud)])
-        if self.part_table_offset:
-            tool_args.extend(['--partition-table-offset', str(self.part_table_offset)])
-        tool_args.extend(['read_partition', '--partition-type', 'data', '--partition-subtype', 'coredump', '--output'])
-
-        self.core_src_file = self._create_temp_file()
-        try:
-            tool_args.append(self.core_src_file)  # type: ignore
-            # read core dump partition
-            et_out = subprocess.check_output(tool_args, stderr=subprocess.STDOUT)
-            if et_out:
-                logging.info(et_out.decode('utf-8'))
-        except subprocess.CalledProcessError as e:
-            raise ESPCoreDumpLoaderError(f'parttool script execution failed with error {e.returncode}, '
-                                         f"failed command was: '{' '.join(e.cmd)}'",
                                          extra_output=e.output.decode('utf-8', 'ignore'))
 
     def _get_core_dump_partition_info(self):  # type: () -> Tuple[int, int]
