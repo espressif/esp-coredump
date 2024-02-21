@@ -31,9 +31,10 @@ repos:
     -   id: mypy
 
   - repo: https://github.com/espressif/conventional-precommit-linter
-    rev: v1.2.1
+    rev: v1.6.0
     hooks:
       - id: conventional-precommit-linter
         stages: [commit-msg]
+        args: ['--types=change,ci,docs,feat,fix,refactor,remove,revert,test,perf']
 
 exclude: "^tests/(esp.+|rom_tests)/.+"
