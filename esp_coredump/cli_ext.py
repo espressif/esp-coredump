@@ -19,6 +19,11 @@ except (AttributeError, ModuleNotFoundError):
     # esptool<4.0
     from esptool import ESPLoader
 
+
+def arg_auto_int(x):
+    return int(x, 0)
+
+
 parser = argparse.ArgumentParser(description='espcoredump.py v%s - ESP32 Core Dump Utility' % __version__)
 parser.add_argument('--chip', default=os.environ.get('ESPTOOL_CHIP', 'auto'),
                     choices=['auto'] + SUPPORTED_TARGETS,
@@ -47,8 +52,10 @@ common_args.add_argument('--core', '-c',
 common_args.add_argument('--core-format', '-t', choices=['auto', 'b64', 'elf', 'raw'], default='auto',
                          help='File specified with "-c" is an ELF (elf), raw (raw) or base64-encoded (b64) binary. '
                          'For autodetection based on file header use "auto".')
-common_args.add_argument('--off', '-o', type=int,
-                         help='Offset of coredump partition in flash (type "make partition_table" to see).')
+common_args.add_argument('--off', '-o', type=arg_auto_int,
+                         help='Offset of coredump partition in flash (type "idf.py partition-table" to see).')
+common_args.add_argument('--parttable-off', type=arg_auto_int,
+                         help='Offset of the partition table in flash.')
 common_args.add_argument('--save-core', '-s',
                          help='Save core to file. Otherwise temporary core file will be deleted. '
                               'Does not work with "-c"', )
