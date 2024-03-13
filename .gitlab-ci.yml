@@ -41,6 +41,10 @@ include:
     file: danger.yaml
 run-danger-mr-linter:
   stage: pre-check
+  variables:
+    ENABLE_CHECK_UPDATED_CHANGELOG: 'false'
+    # when changing please also update .pre-commit-config.yaml
+    COMMIT_MESSAGE_ALLOWED_TYPES: 'change,ci,docs,feat,fix,refactor,remove,revert,test,perf'
 
 # CODE CHECK BY PRE-COMMIT HOOKS
 pre-commit_hooks_MR:
