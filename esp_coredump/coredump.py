@@ -352,17 +352,23 @@ class CoreDump:
             thr_id = int(thr['id'])
             tcb_addr = self.gdb_esp.gdb2freertos_thread_id(thr['target-id'])
             task_name = self.gdb_esp.get_freertos_task_name(tcb_addr)
-            pxEndOfStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxEndOfStack'), 16)
-            pxTopOfStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxTopOfStack'), 16)
-            pxStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxStack'), 16)
-            uxPriority = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'uxPriority'), 16)
-            uxBasePriority = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'uxBasePriority'), 16)
-            thread_dict[thr_id] = {'tcb_addr': tcb_addr, 'task_name': task_name}
+            try:
+                pxEndOfStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxEndOfStack'), 16)
+                pxTopOfStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxTopOfStack'), 16)
+                pxStack = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'pxStack'), 16)
+                uxPriority = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'uxPriority'), 16)
+                uxBasePriority = int(self.gdb_esp.parse_tcb_variable(tcb_addr, 'uxBasePriority'), 16)
+            except ValueError:
+                pxEndOfStack = pxTopOfStack = pxStack = uxPriority = uxBasePriority = 0
 
+            thread_dict[thr_id] = {'tcb_addr': tcb_addr, 'task_name': task_name}
             ftcb_addr = '0x{:x}'.format(tcb_addr)
-            fpriority = '{}/{}'.format(uxPriority, uxBasePriority)
-            fstack_usage = '{}/{}'.format(abs(pxEndOfStack - pxTopOfStack), abs(pxStack - pxTopOfStack))
-            print(f'{ftcb_addr:>10}{task_name:>17}{fpriority:>9}{fstack_usage:>17}')
+            if pxStack == 0:
+                print(f'{ftcb_addr:>10} Corrupted TCB data')
+            else:
+                fpriority = '{}/{}'.format(uxPriority, uxBasePriority)
+                fstack_usage = '{}/{}'.format(abs(pxEndOfStack - pxTopOfStack), abs(pxStack - pxTopOfStack))
+                print(f'{ftcb_addr:>10}{task_name:>17}{fpriority:>9}{fstack_usage:>17}')
 
         for thr_id, value in thread_dict.items():
             tcb_addr = value['tcb_addr']
