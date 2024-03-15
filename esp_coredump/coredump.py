@@ -65,7 +65,7 @@ class CoreDump:
                  baud: Optional[int] = int(os.environ.get('ESPTOOL_BAUD', ESPLoader.ESP_ROM_BAUD)),
                  chip: str = os.environ.get('ESPTOOL_CHIP', 'auto'),
                  core_format: str = 'auto',
-                 port: str = os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT),
+                 port: Optional[str] = os.environ.get('ESPTOOL_PORT'),
                  gdb_timeout_sec: int = DEFAULT_GDB_TIMEOUT_SEC,
                  core: Optional[str] = None,
                  chip_rev: Optional[int] = None,
