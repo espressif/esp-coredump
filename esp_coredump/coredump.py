@@ -42,7 +42,7 @@ IDF_PATH = os.getenv('IDF_PATH', '')
 ESP_ROM_ELF_DIR = os.getenv('ESP_ROM_ELF_DIR')
 ROMS_JSON = os.path.join(IDF_PATH, 'tools', 'idf_py_actions', 'roms.json')  # type: ignore
 
-MORE_INFO_MSG = 'Read more: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html'
+MORE_INFO_MSG = 'Read more: https://github.com/espressif/esp-coredump/blob/master/README.md#installation'
 GDB_NOT_FOUND_ERROR = (
     f'GDB executable not found. Please install GDB or set up ESP-IDF to complete the action. '
     f'{MORE_INFO_MSG}'
