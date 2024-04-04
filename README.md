@@ -8,13 +8,19 @@ A Python-based utility that helps users to retrieve and analyse core dumps. This
 
 ## Installation
 
-**esp-coredump** is a stand-alone utility integrated into ESP-IDF.
+**esp-coredump** is a standalone utility integrated into ESP-IDF. It is recommended to run `esp-coredump` from within ESP-IDF environment due to the ease of setup.
 
 To install the **ESP-IDF** framework please visit the [documentation](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html).
 
+### Standalone Installation (without ESP-IDF)
+
+If you're attempting to run `esp-coredump` outside of the ESP-IDF environment, you'll need to install `esp-gdb`. The most recent version can be downloaded from the [GitHub releases](https://github.com/espressif/binutils-gdb/releases) page. To determine the appropriate version for your environment, refer to the [ESP-IDF documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/tools/idf-tools.html#xtensa-esp-elf-gdb).
+Note that toolchain versions may vary between ESP-IDF versions. To get the correct version for your needs, select your version of ESP-IDF in the top left corner.
+Ensure you download the correct version that matches the architecture of your ESP32. After downloading the toolchain, verify that it's accessible in your system's PATH.
+
 ## Examples
 
-`esp-coredump` can be used as a CLI tool as well as separate package
+`esp-coredump` can be used as a CLI tool as well as a separate package. Before executing any examples, ensure that all requirements outlined in the [Installation](#installation) section have been met. If you decide to use ESP-IDF, all commands should be run from within the ESP-IDF environment.
 
 Build  `test_apps` for a target, flash and get a base64 text (`test_apps` folder)
 
