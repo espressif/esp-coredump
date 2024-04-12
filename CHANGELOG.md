@@ -1,3 +1,19 @@
+## v1.11.0 (2024-04-12)
+
+### New Features
+
+- **esp-coredump**: add esp32c5 chip support
+- make serial port arg optional
+
+### Bug Fixes
+
+- add cli option to pass partition table offset
+- **coredump**: handle value errors when parsing TCB variable
+
+### Performance Improvements
+
+- **loader**: always use esptool to load coredump from flash
+
 ## v1.10.0 (2024-01-10)
 
 ### New Features
