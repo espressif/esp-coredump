@@ -7,6 +7,7 @@
 import logging
 import re
 import time
+from subprocess import TimeoutExpired
 
 from pygdbmi.gdbcontroller import GdbController
 
@@ -35,8 +36,16 @@ class EspGDB(object):
                                           done_message='done', done_type='result')
 
     def __del__(self):
+        """EspGDB destructor taking GdbController.gdb_process.exit() and adjusting it to work properly"""
         try:
-            self.p.exit()
+            if self.p.gdb_process:
+                self.p.gdb_process.terminate()
+                try:
+                    self.p.gdb_process.wait(timeout=1)
+                except TimeoutExpired:
+                    if self.p.gdb_process.returncode is None:
+                        self.p.gdb_process.kill()
+                self.p.gdb_process = None
         except IndexError:
             logging.warning('Attempt to terminate the GDB process failed, because it is already terminated. Skip')
 
