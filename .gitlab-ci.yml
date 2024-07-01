@@ -2,8 +2,7 @@ stages:
   - pre-check
   - codecheck
   - test
-  - release
-
+  - report
 
 # WORKFLOW RULES
 # ------------------------------------------------------------------------------------------------------
@@ -81,12 +80,40 @@ test_espcoredump:
   stage: test
   extends: .idf_template
   artifacts:
-    when: on_failure
+    when: always
     paths:
       - "tests"
+      - ".coverage*"
     expire_in: 1 week
   script:
-    - pip install -e .
-    - python esp_coredump/scripts/run_tests.py
+    - pip install -e .[test]
+    - coverage run esp_coredump/scripts/run_tests.py
+
+combine_reports:
+  stage: report
+  extends: .base_template
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura_report.xml
+    when: always
+    paths:
+      - ".coverage*"
+      - cobertura_report.xml
+      - ./html_report/
+    expire_in: 1 week
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  variables:
+    LC_ALL: C.UTF-8
+    COVERAGE_RCFILE: "${CI_PROJECT_DIR}/pyproject.toml"
+  script:
+    - pip install -e .[test]
+    # all .coverage files in sub-directories are moved to the parent dir first
+    - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
+    - coverage combine
+    - coverage report --precision=2
+    - coverage html -d html_report --precision=2
+    - coverage xml -o cobertura_report.xml
 
 # ------------------------------------------------------------------------------------------------------

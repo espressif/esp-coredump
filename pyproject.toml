@@ -43,6 +43,9 @@ dev = [
     "pre-commit",
     "commitizen",
 ]
+test = [
+    "coverage[toml]",
+]
 
 [project.scripts]
 esp-coredump = "esp_coredump.scripts.espcoredump:main"
@@ -88,3 +91,7 @@ perf = "Performance Improvements"
     python_version           = "3.9" # Specifies the Python version used to parse and check the target program
     warn_no_return           = true  # Shows errors for missing return statements on some execution paths
     warn_return_any          = true  # Shows a warning when returning a value with type Any from a function declared with a non- Any return type
+
+[tool.coverage.run]
+    parallel = true
+    source = ["esp_coredump/"]
