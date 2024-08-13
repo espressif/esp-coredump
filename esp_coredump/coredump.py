@@ -11,8 +11,7 @@ import subprocess
 import sys
 import textwrap
 from contextlib import contextmanager
-from distutils.spawn import find_executable
-from shutil import copyfile
+from shutil import copyfile, which
 from typing import Optional, Tuple, Union
 
 import serial
@@ -234,7 +233,7 @@ class CoreDump:
             gdb_path = 'riscv32-esp-elf-gdb'
         else:
             raise ValueError(f'Invalid value: {target}. For now we only support {SUPPORTED_TARGETS}')
-        if not find_executable(gdb_path):
+        if which(gdb_path) is None:
             return None
 
         return gdb_path
