@@ -68,3 +68,7 @@ class Esp32P4Methods(BaseTargetMethods, RiscvMethodsMixin):
 
 class Esp32C5Methods(BaseTargetMethods, RiscvMethodsMixin):
     TARGET = 'esp32c5'
+
+
+class Esp32C61Methods(BaseTargetMethods, RiscvMethodsMixin):
+    TARGET = 'esp32c61'

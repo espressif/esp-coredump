@@ -207,6 +207,9 @@ class CoreDump:
             if chip_version == EspCoreDumpVersion.ESP32C5:
                 return 'esp32c5'
 
+            if chip_version == EspCoreDumpVersion.ESP32C61:
+                return 'esp32c61'
+
         target = None
         try:
             inst = detect_chip(self.port, self.baud)
