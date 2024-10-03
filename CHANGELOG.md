@@ -1,3 +1,14 @@
+## v1.12.0 (2024-10-03)
+
+### New Features
+
+- **esp-coredump**: add esp32c61 chip support
+
+### Bug Fixes
+
+- **python3.12**: replace distutils with shutil
+- **gdb**: EspGDB descrutor Thread exceptions fix
+
 ## v1.11.0 (2024-04-12)
 
 ### New Features
