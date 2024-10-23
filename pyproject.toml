@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=61.2"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "esp-coredump"
 authors = [{name = "Espressif Systems"}]
-license = {file = "LICENSE"}
+license = {text = "Apache 2.0"}
 description = "Generate core dumps on unrecoverable software errors"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -48,7 +48,7 @@ test = [
 ]
 
 [project.scripts]
-esp-coredump = "esp_coredump.scripts.espcoredump:main"
+esp-coredump = "esp_coredump.__main__:main"
 
 [tool.setuptools]
 include-package-data = true

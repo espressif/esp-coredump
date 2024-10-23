@@ -1,5 +1,5 @@
 #
-# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -24,7 +24,7 @@ def arg_auto_int(x):
     return int(x, 0)
 
 
-parser = argparse.ArgumentParser(description='espcoredump.py v%s - ESP32 Core Dump Utility' % __version__)
+parser = argparse.ArgumentParser(description=f'espcoredump.py v{__version__} - ESP32 Core Dump Utility')
 parser.add_argument('--chip', default=os.environ.get('ESPTOOL_CHIP', 'auto'),
                     choices=['auto'] + SUPPORTED_TARGETS,
                     help='Target chip type')
@@ -42,7 +42,7 @@ parser.add_argument('--version', action='version',
 
 common_args = argparse.ArgumentParser(add_help=False)
 common_args.add_argument('--debug', '-d', type=int, default=3,
-                         help='Log level (0..3)')
+                         help='Log level (0..3)')  # TODO: move this option to global args in next major release
 common_args.add_argument('--gdb', '-g',
                          help='Path to gdb')
 common_args.add_argument('--extra-gdbinit-file', '-ex',
@@ -63,7 +63,7 @@ common_args.add_argument('--rom-elf', '-r',
                          help='Path to ROM ELF file. Will use "<target>_rom.elf" if not specified')
 common_args.add_argument('prog', help='Path to program\'s ELF binary')
 
-operations = parser.add_subparsers(dest='operation')
+operations = parser.add_subparsers(dest='operation', required=True, description='Operation to perform')
 
 operations.add_parser('dbg_corefile', parents=[common_args],
                       help='Starts GDB debugging session with specified corefile')
