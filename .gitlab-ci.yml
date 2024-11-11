@@ -87,7 +87,7 @@ test_espcoredump:
     expire_in: 1 week
   script:
     - pip install -e .[test]
-    - coverage run esp_coredump/scripts/run_tests.py
+    - coverage run -m unittest -v
 
 combine_reports:
   stage: report

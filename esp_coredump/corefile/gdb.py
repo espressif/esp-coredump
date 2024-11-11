@@ -5,6 +5,7 @@
 #
 
 import logging
+import os
 import re
 import time
 from subprocess import TimeoutExpired
@@ -40,6 +41,9 @@ class EspGDB(object):
         try:
             if self.p.gdb_process:
                 self.p.gdb_process.terminate()
+                if os.name != 'nt':
+                    # this is causing an Exception on Windows, but is required on UNIX systems
+                    self.p.gdb_process.communicate()  # Close pipes (STDIN, STDOUT, STDERR)
                 try:
                     self.p.gdb_process.wait(timeout=1)
                 except TimeoutExpired:
