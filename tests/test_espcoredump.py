@@ -1,10 +1,11 @@
-# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 import base64
 import contextlib
 import io
 import os
-import unittest
+
+import pytest
 
 try:
     from esp_coredump import CoreDump
@@ -65,55 +66,54 @@ def decode_from_b64_to_bin(target):
             fw.write(data)
 
 
-class TestESPCoreDumpDecode(unittest.TestCase):
-    def test_coredump_decode_from_b64(self):
-        for target in SUPPORTED_TARGET:
-            output = get_output(core_ext='b64', save_core=True, target=target)
-            expected_output = get_expected_output(target)
-            self.assertEqual(expected_output, output)
+class TestESPCoreDumpDecode:
 
-    def test_coredump_decode_from_elf(self):
-        for target in SUPPORTED_TARGET:
-            output = get_output(core_ext='elf', target=target)
-            expected_output = get_expected_output(target)
-            self.assertEqual(expected_output, output)
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_coredump_decode_from_b64(self, target):
+        output = get_output(core_ext='b64', save_core=True, target=target)
+        expected_output = get_expected_output(target)
+        assert expected_output == output
 
-    def test_coredump_decode_from_bin(self):
-        for target in SUPPORTED_TARGET:
-            decode_from_b64_to_bin(target)
-            output = get_output(core_ext='bin', target=target)
-            expected_output = get_expected_output(target)
-            self.assertEqual(expected_output, output)
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_coredump_decode_from_elf(self, target):
+        output = get_output(core_ext='elf', target=target)
+        expected_output = get_expected_output(target)
+        assert expected_output == output
 
-    def test_coredump_decode_auto_format(self):
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_coredump_decode_from_bin(self, target):
+        decode_from_b64_to_bin(target)
+        output = get_output(core_ext='bin', target=target)
+        expected_output = get_expected_output(target)
+        assert expected_output == output
+
+    @pytest.mark.parametrize('format', ['bin', 'elf', 'b64'])
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_coredump_decode_auto_format(self, target, format):
         # make sure that .elf and .bin inputs are created
-        for target in SUPPORTED_TARGET:
-            get_output(core_ext='b64', save_core=True, target=target)
-            decode_from_b64_to_bin(target)
-        for format in ['bin', 'elf', 'b64']:
-            with self.subTest(format=format):
-                for target in SUPPORTED_TARGET:
-                    output = get_output(core_ext=format, target=target, auto_format=True)
-                    expected_output = get_expected_output(target)
-                    self.assertEqual(expected_output, output)
+        get_output(core_ext='b64', save_core=True, target=target)
+        decode_from_b64_to_bin(target)
+        output = get_output(core_ext=format, target=target, auto_format=True)
+        expected_output = get_expected_output(target)
+        assert expected_output == output
 
 
-class TestESPCoreDumpElfFile(unittest.TestCase):
-    def test_read_elf(self):
-        for target in SUPPORTED_TARGET:
-            elf = ESPCoreDumpElfFile(os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.elf'))
-            self.assertIsNotNone(elf.load_segments)
-            self.assertIsNotNone(elf.note_segments)
+class TestESPCoreDumpElfFile:
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_read_elf(self, target):
+        elf = ESPCoreDumpElfFile(os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.elf'))
+        assert elf.load_segments is not None
+        assert elf.note_segments is not None
 
 
-class TestESPCoreDumpFileLoader(unittest.TestCase):
-    def test_load_wrong_encode_core_bin(self):
-        for target in SUPPORTED_TARGET:
-            with self.assertRaises(ESPCoreDumpLoaderError):
-                ESPCoreDumpFileLoader(path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'), is_b64=False)
+class TestESPCoreDumpFileLoader:
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_load_wrong_encode_core_bin(self, target):
+        with pytest.raises(ESPCoreDumpLoaderError):
+            ESPCoreDumpFileLoader(path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'), is_b64=False)
 
-    def test_create_corefile(self):
-        for target in SUPPORTED_TARGET:
-            loader = ESPCoreDumpFileLoader(path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'), is_b64=True)
-            loader.create_corefile()
-            self.assertTrue(os.path.exists(loader.core_elf_file))
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_create_corefile(self, target):
+        loader = ESPCoreDumpFileLoader(path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'), is_b64=True)
+        loader.create_corefile()
+        assert os.path.exists(loader.core_elf_file)
