@@ -96,6 +96,14 @@ perf = "Performance Improvements"
 [tool.coverage.run]
     parallel = true
     source = ["esp_coredump/"]
+[tool.coverage.report]
+    omit = ["esp_coredump/corefile/_parse_soc_header.py"]  # ignore helper script
+    exclude_also = [
+        "def __repr__",
+        "def _type_str",
+        "@(abc\\.)?abstractmethod",
+        "raise NotImplementedError",
+    ]
 
 [tool.pytest.ini_options]
     addopts = "-vs"
