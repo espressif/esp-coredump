@@ -39,7 +39,8 @@ from .corefile.loader import (ESPCoreDumpFileLoader, ESPCoreDumpFlashLoader,
 
 IDF_PATH = os.getenv('IDF_PATH', '')
 ESP_ROM_ELF_DIR = os.getenv('ESP_ROM_ELF_DIR')
-ROMS_JSON = os.path.join(IDF_PATH, 'tools', 'idf_py_actions', 'roms.json')
+# 'tools/idf_py_actions/roms.json' is used for compatibility with ESP-IDF before v5.5, when the file was moved
+ROMS_JSON = [os.path.join(IDF_PATH, 'components', 'esp_rom', 'roms.json'), os.path.join(IDF_PATH, 'tools', 'idf_py_actions', 'roms.json')]
 
 MORE_INFO_MSG = 'Read more: https://github.com/espressif/esp-coredump/blob/master/README.md#installation'
 GDB_NOT_FOUND_ERROR = (
@@ -284,8 +285,14 @@ class CoreDump:
             print("The ROM ELF file won't be loaded automatically since you are running the utility out of IDF.")
             return rom_file_path
 
-        roms_json = load_json_from_file(ROMS_JSON)
-        target_roms = roms_json.get(target, [])
+        target_roms = None
+        for rom_json_path in ROMS_JSON:
+            try:
+                roms_json = load_json_from_file(rom_json_path)
+                target_roms = roms_json.get(target, [])
+                break
+            except FileNotFoundError:
+                continue
 
         if not target_roms:
             print("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
