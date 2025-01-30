@@ -10,7 +10,7 @@ class FatalError(Exception):
     pass
 
 
-def load_json_from_file(filename):
+def load_json_from_file(filename: str) -> dict:
     with open(filename, 'r') as file:
-        data = json.load(file)
+        data: dict = json.load(file)
     return data
