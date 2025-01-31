@@ -105,9 +105,12 @@ class CoreDump:
         sym_cmd = ''
         if os.path.exists(elf_path):
             elf = ElfFile(elf_path)
+            if os.name == 'nt':
+                elf_path = elf_path.replace('\\', '/')
             for s in elf.sections:
                 if s.name == '.text':
-                    sym_cmd = 'add-symbol-file %s 0x%x' % (elf_path, s.addr)
+                    sym_cmd = f'add-symbol-file {elf_path} {s.addr:#x}'
+                    break
         return sym_cmd
 
     def extract_chip_rev_from_elf(self):
