@@ -20,6 +20,20 @@
 </div>
 <hr>
 
+## v1.13.0 (2025-02-03)
+
+### ✨ New Features
+
+- add support for new roms.json location *(Peter Dragun - 90a1a68)*
+
+### 🐛 Bug Fixes
+
+- **cli**: provide correct error messages and rework the script structure *(Peter Dragun - f15a82c)*
+- Use Posix paths on Windows for loading symbols from file *(Roland Dobai - 4b7d3d8)*
+- Fix empty env variable for ROM ELF directory *(Peter Dragun - 1c0295b)*
+- close pipes in gdb subprocess *(Peter Dragun - 51fdc71)*
+
+
 ## v1.12.0 (2024-10-03)
 
 ### ✨ New Features
