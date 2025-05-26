@@ -23,7 +23,7 @@ from .elf import (TASK_STATUS_CORRECT, TASK_STATUS_TCB_CORRUPTED, ElfFile,
                   ElfSegment, ESPCoreDumpElfFile, EspTaskStatus, NoteSection)
 from .riscv import (Esp32C2Methods, Esp32C3Methods, Esp32C5Methods,
                     Esp32C6Methods, Esp32C61Methods, Esp32H2Methods,
-                    Esp32P4Methods)
+                    Esp32H4Methods, Esp32H21Methods, Esp32P4Methods)
 from .xtensa import Esp32Methods, Esp32S2Methods, Esp32S3Methods
 
 IDF_PATH = os.getenv('IDF_PATH', '')
@@ -117,7 +117,9 @@ class EspCoreDumpVersion(object):
     ESP32P4 = 18
     ESP32C61 = 20
     ESP32C5 = 23
-    RISCV_CHIPS = [ESP32C3, ESP32C2, ESP32H2, ESP32C6, ESP32P4, ESP32C5, ESP32C61]
+    ESP32H21 = 25
+    ESP32H4 = 28
+    RISCV_CHIPS = [ESP32C3, ESP32C2, ESP32H2, ESP32C6, ESP32P4, ESP32C5, ESP32C61, ESP32H21, ESP32H4]
 
     COREDUMP_SUPPORTED_TARGETS = XTENSA_CHIPS + RISCV_CHIPS
 
@@ -259,6 +261,10 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                 self.target_methods = Esp32C5Methods()  # type: ignore
             elif self.chip_ver == self.ESP32C61:
                 self.target_methods = Esp32C61Methods()  # type: ignore
+            elif self.chip_ver == self.ESP32H21:
+                self.target_methods = Esp32H21Methods()  # type: ignore
+            elif self.chip_ver == self.ESP32H4:
+                self.target_methods = Esp32H4Methods()  # type: ignore
             else:
                 raise NotImplementedError
         else:
