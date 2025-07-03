@@ -56,6 +56,12 @@ EspCoreDumpV2_1_Header = Struct(
     'chip_rev' / Int32ul,
 )
 
+EspCoreDumpV2_2_Header = Struct(
+    'tot_len' / Int32ul,
+    'ver' / Int32ul,
+    'chip_rev' / Int32ul,
+)
+
 CRC = Int32ul
 SHA256 = Bytes(32)
 
@@ -165,7 +171,8 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
     ELF_CRC32_V2_1 = EspCoreDumpVersion.make_dump_ver(1, 2)
     ELF_SHA256_V2 = EspCoreDumpVersion.make_dump_ver(1, 1)
     ELF_SHA256_V2_1 = EspCoreDumpVersion.make_dump_ver(1, 3)
-    CORE_VERSIONS = [BIN_V1, BIN_V2, BIN_V2_1, ELF_CRC32_V2, ELF_CRC32_V2_1, ELF_SHA256_V2, ELF_SHA256_V2_1]
+    ELF_SHA256_V2_2 = EspCoreDumpVersion.make_dump_ver(1, 4)
+    CORE_VERSIONS = [BIN_V1, BIN_V2, BIN_V2_1, ELF_CRC32_V2, ELF_CRC32_V2_1, ELF_SHA256_V2, ELF_SHA256_V2_1, ELF_SHA256_V2_2]
 
     def __init__(self):  # type: () -> None
         super(EspCoreDumpLoader, self).__init__()
@@ -214,6 +221,9 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         elif self.dump_ver == self.ELF_SHA256_V2_1:
             self.checksum_struct = SHA256
             self.header_struct = EspCoreDumpV2_1_Header
+        elif self.dump_ver == self.ELF_SHA256_V2_2:
+            self.checksum_struct = SHA256
+            self.header_struct = EspCoreDumpV2_2_Header
         elif self.dump_ver == self.BIN_V1:
             self.checksum_struct = CRC
             self.header_struct = EspCoreDumpV1Header
@@ -297,6 +307,9 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         if self.dump_ver in [self.ELF_SHA256_V2_1]:
             data_sha256 = hashlib.sha256(
                 EspCoreDumpV2_1_Header.build(self.core_src.header) + self.core_src.data)  # type: ignore
+        elif self.dump_ver in [self.ELF_SHA256_V2_2]:
+            data_sha256 = hashlib.sha256(
+                EspCoreDumpV2_2_Header.build(self.core_src.header) + self.core_src.data)  # type: ignore
         else:
             data_sha256 = hashlib.sha256(
                 EspCoreDumpV2Header.build(self.core_src.header) + self.core_src.data)  # type: ignore
@@ -318,7 +331,8 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         if self.dump_ver in [self.ELF_CRC32_V2,
                              self.ELF_CRC32_V2_1,
                              self.ELF_SHA256_V2,
-                             self.ELF_SHA256_V2_1]:
+                             self.ELF_SHA256_V2_1,
+                             self.ELF_SHA256_V2_2]:
             self._extract_elf_corefile(exe_name, e_machine)
         elif self.dump_ver in [self.BIN_V1,
                                self.BIN_V2,
