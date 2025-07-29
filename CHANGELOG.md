@@ -20,6 +20,14 @@
 </div>
 <hr>
 
+## v1.14.0 (2025-07-28)
+
+### ✨ New Features
+
+- add sha256 header format v2.2 *(Erhan Kurubas - 9141be0)*
+- Add ESP32-H4 and ESP32-H21 supports *(Erhan Kurubas - 01a6eab)*
+
+
 ## v1.13.1 (2025-02-03)
 
 
