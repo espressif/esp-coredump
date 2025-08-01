@@ -81,6 +81,9 @@ class BaseTargetMethods(BaseArchMethodsMixin, ABC):  # type: ignore
     def _esp_ptr_in_iram(self, addr):  # type: (int) -> bool
         return self.SOC_IRAM_LOW <= addr < self.SOC_IRAM_HIGH  # type: ignore
 
+    def _esp_ptr_in_external_dram(self, addr):  # type: (int) -> bool
+        return self.SOC_EXTRAM_DATA_LOW <= addr < self.SOC_EXTRAM_DATA_HIGH  # type: ignore
+
     def _esp_ptr_in_rtc_slow(self, addr):  # type: (int) -> bool
         return self.SOC_RTC_DATA_LOW <= addr < self.SOC_RTC_DATA_HIGH  # type: ignore
 
@@ -102,9 +105,14 @@ class BaseTargetMethods(BaseArchMethodsMixin, ABC):  # type: ignore
                     or addr > self.SOC_DRAM_HIGH - 0x10  # type: ignore
                     or (addr & 0xF) != 0)
 
+    def _esp_stack_ptr_in_extram(self, addr):  # type: (int) -> bool
+        return (self._esp_ptr_in_external_dram(addr)
+                and (addr & 0xF) == 0)
+
     def stack_is_sane(self, stack_start, stack_end):  # type: (int, int) -> bool
-        return (self._esp_stack_ptr_in_dram(stack_start)
-                and self._esp_ptr_in_dram(stack_end)
+        return (((self._esp_stack_ptr_in_dram(stack_start) and self._esp_ptr_in_dram(stack_end))
+                or (self._esp_stack_ptr_in_extram(stack_start) and self._esp_ptr_in_external_dram(stack_end))
+                or (self._esp_ptr_in_rtc_dram_fast(stack_start) and self._esp_ptr_in_rtc_dram_fast(stack_end)))
                 and stack_start < stack_end
                 and (stack_end - stack_start) < self.COREDUMP_MAX_TASK_STACK_SIZE)
 
