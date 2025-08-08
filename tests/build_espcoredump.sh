@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-supported_targets=("esp32" "esp32c3" "esp32p4", "esp32c6")
+supported_targets=("esp32" "esp32c3" "esp32p4" "esp32c6" "esp32s3")
 abs_path_build_dir=$(realpath "$(dirname "$0")")
 echo "$abs_path_build_dir"
 

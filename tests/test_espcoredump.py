@@ -100,7 +100,7 @@ class TestESPCoreDumpDecode:
         out = proc.stdout.decode().split('\n', 1)[1]  # remove first line with version
         assert expected_output == out
 
-    @pytest.mark.parametrize('target', ['esp32', 'esp32c3'])
+    @pytest.mark.parametrize('target', ['esp32', 'esp32c3', 'esp32s3'])
     def test_bin_coredump_decode(self, target):
         """Built with CONFIG_ESP_COREDUMP_DATA_FORMAT_BIN=y (instead of default ELF)"""
         output = get_output(core_ext='b64', target=target, bin_fmt=True)
