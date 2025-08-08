@@ -6,3 +6,5 @@ SOC_RTC_DATA_LOW = 0xffffffff
 SOC_RTC_DATA_HIGH = 0xffffffff
 SOC_RTC_DRAM_LOW = 0xffffffff
 SOC_RTC_DRAM_HIGH = 0xffffffff
+SOC_EXTRAM_DATA_LOW = 0xffffffff
+SOC_EXTRAM_DATA_HIGH = 0xffffffff

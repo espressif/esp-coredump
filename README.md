@@ -28,7 +28,7 @@ Build  `test_apps` for a target, flash and get a base64 text (`test_apps` folder
 from esp_coredump import CoreDump
 
 # Instantiate the coredump object
-coredump = CoreDump(chip='esp32',core="./test/esp32/coredump.b64",core_format='b64', prog='./test_apps/build/test_core_dump.elf')
+coredump = CoreDump(chip='esp32', core="./tests/esp32/coredump.b64", print_mem=True, core_format='b64', prog='./test_apps/build/test_core_dump.elf')
 coredump.info_corefile()  #  print the info of the test app corefile
 coredump.dbg_corefile()  #  run GDB debug session with provided ELF file
 ```
