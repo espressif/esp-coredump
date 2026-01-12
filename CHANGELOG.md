@@ -20,6 +20,17 @@
 </div>
 <hr>
 
+## v1.15.0 (2026-01-12)
+
+### ✨ New Features
+
+- **loader**: add retry logic for esptool and parttool subprocess calls *(Erhan Kurubas - 44346cc)*
+
+### 🐛 Bug Fixes
+
+- Fix a bug in stack_is_sane filtering psram and rtc_dram address spaces *(LiPeng - d22280d)*
+
+
 ## v1.14.0 (2025-07-28)
 
 ### ✨ New Features
