@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from base64 import b64decode
 from typing import Optional, Tuple
 
@@ -28,6 +29,9 @@ from .xtensa import Esp32Methods, Esp32S2Methods, Esp32S3Methods
 
 IDF_PATH = os.getenv('IDF_PATH', '')
 PARTTOOL_PY = os.path.join(IDF_PATH, 'components', 'partition_table', 'parttool.py')
+
+RETRY_ATTEMPTS = 3
+RETRY_DELAY_SEC = 3
 
 # Following structs are based on source code
 # components/espcoredump/include_core_dump/esp_core_dump_priv.h
@@ -556,6 +560,29 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
         self._get_core_src(offset, target)
         self.target = self._load_core_src()
 
+    def _retry_subprocess_check_output(self, tool_args, operation_name='subprocess', stderr=subprocess.STDOUT):
+        # type: (list, str, Optional[int]) -> bytes
+        """
+        Retry subprocess.check_output with defined seconds delay
+
+        Args:
+            tool_args: Command and arguments to execute
+            operation_name: Name of the operation for logging
+            stderr: How to handle stderr (default: subprocess.STDOUT to capture it)
+                   Use None to preserve original behavior (stderr not captured)
+        """
+        for attempt in range(1, RETRY_ATTEMPTS + 1):
+            try:
+                return subprocess.check_output(tool_args, stderr=stderr)
+            except subprocess.CalledProcessError as e:
+                last_exception = e
+                if attempt < RETRY_ATTEMPTS:
+                    logging.warning(f'{operation_name} failed (attempt {attempt}/{RETRY_ATTEMPTS}): {e}. Retrying in {RETRY_DELAY_SEC} seconds...')
+                    time.sleep(RETRY_DELAY_SEC)
+                else:
+                    logging.error(f'{operation_name} failed after {RETRY_ATTEMPTS} attempts')
+        raise last_exception
+
     def _get_core_src(self, off, target=None):  # type: (Optional[int], Optional[str]) -> None
         """
         Loads core dump from flash using esptool
@@ -590,7 +617,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             tool_args.append(self.core_src_file)  # type: ignore
 
             # read core dump length
-            et_out = subprocess.check_output(tool_args, stderr=subprocess.STDOUT)
+            et_out = self._retry_subprocess_check_output(tool_args, 'esptool read_flash (header)')
             if et_out:
                 logging.info(et_out.decode('utf-8'))
 
@@ -603,7 +630,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
                 coredump_len = header.tot_len
             # set actual size of core dump image and read it from flash
             tool_args[-2] = str(coredump_len)
-            et_out = subprocess.check_output(tool_args, stderr=subprocess.STDOUT)
+            et_out = self._retry_subprocess_check_output(tool_args, 'esptool read_flash (full dump)')
             if et_out:
                 logging.info(et_out.decode('utf-8'))
         except subprocess.CalledProcessError as e:
@@ -624,7 +651,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             invoke_args = tool_args + ['get_partition_info', '--partition-type', 'data',
                                        '--partition-subtype', 'coredump',
                                        '--info', 'offset', 'size']
-            res = subprocess.check_output(invoke_args).strip()
+            res = self._retry_subprocess_check_output(invoke_args, 'parttool get_partition_info').strip()
             (offset_str, size_str) = res.rsplit(b'\n')[-1].split(b' ')
             size = int(size_str, 16)
             offset = int(offset_str, 16)
