@@ -20,6 +20,17 @@
 </div>
 <hr>
 
+## v1.16.0 (2026-04-08)
+
+### ✨ New Features
+
+- add esp32s31 support *(Erhan Kurubas - 90462b6)*
+
+### 🐛 Bug Fixes
+
+- map ESP32-H21/H4 chip version in get_target() *(Erhan Kurubas - 3f8b254)*
+
+
 ## v1.15.0 (2026-01-12)
 
 ### ✨ New Features
