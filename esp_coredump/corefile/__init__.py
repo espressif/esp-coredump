@@ -7,16 +7,25 @@
 
 from abc import ABC, abstractmethod
 from importlib import import_module
-from typing import Optional, Tuple
+from typing import Optional, Tuple  # noqa: F401
 
 from .elf import ElfFile
 
-__all__ = [
-    'ElfFile', 'ESPCoreDumpLoaderError'
-]
+__all__ = ['ElfFile', 'ESPCoreDumpLoaderError']
 
 XTENSA_TARGETS = ['esp32', 'esp32s2', 'esp32s3']
-RISCV_TARGETS = ['esp32c3', 'esp32c2', 'esp32c6', 'esp32h2', 'esp32p4', 'esp32c5', 'esp32c61', 'esp32h21', 'esp32h4', 'esp32s31']
+RISCV_TARGETS = [
+    'esp32c3',
+    'esp32c2',
+    'esp32c6',
+    'esp32h2',
+    'esp32p4',
+    'esp32c5',
+    'esp32c61',
+    'esp32h21',
+    'esp32h4',
+    'esp32s31',
+]
 SUPPORTED_TARGETS = XTENSA_TARGETS + RISCV_TARGETS
 
 
@@ -91,31 +100,37 @@ class BaseTargetMethods(BaseArchMethodsMixin, ABC):  # type: ignore
         return self.SOC_RTC_DRAM_LOW <= addr < self.SOC_RTC_DRAM_HIGH  # type: ignore
 
     def tcb_is_sane(self, tcb_addr, tcb_size):  # type: (int, int) -> bool
-        for func in [self._esp_ptr_in_dram,
-                     self._esp_ptr_in_iram,
-                     self._esp_ptr_in_rtc_slow,
-                     self._esp_ptr_in_rtc_dram_fast]:
+        for func in [
+            self._esp_ptr_in_dram,
+            self._esp_ptr_in_iram,
+            self._esp_ptr_in_rtc_slow,
+            self._esp_ptr_in_rtc_dram_fast,
+        ]:
             res = func(tcb_addr) and func(tcb_addr + tcb_size - 1)
             if res:
                 return True
         return False
 
     def _esp_stack_ptr_in_dram(self, addr):  # type: (int) -> bool
-        return not (addr < self.SOC_DRAM_LOW + 0x10  # type: ignore
-                    or addr > self.SOC_DRAM_HIGH - 0x10  # type: ignore
-                    or (addr & 0xF) != 0)
+        return not (
+            addr < self.SOC_DRAM_LOW + 0x10  # type: ignore
+            or addr > self.SOC_DRAM_HIGH - 0x10  # type: ignore
+            or (addr & 0xF) != 0
+        )
 
     def _esp_stack_ptr_in_extram(self, addr):  # type: (int) -> bool
-        return (self._esp_ptr_in_external_dram(addr)
-                and (addr & 0xF) == 0)
+        return self._esp_ptr_in_external_dram(addr) and (addr & 0xF) == 0
 
     def stack_is_sane(self, stack_start, stack_end):  # type: (int, int) -> bool
-        return (((self._esp_stack_ptr_in_dram(stack_start) and self._esp_ptr_in_dram(stack_end))
+        return (
+            (
+                (self._esp_stack_ptr_in_dram(stack_start) and self._esp_ptr_in_dram(stack_end))
                 or (self._esp_stack_ptr_in_extram(stack_start) and self._esp_ptr_in_external_dram(stack_end))
-                or (self._esp_ptr_in_rtc_dram_fast(stack_start) and self._esp_ptr_in_rtc_dram_fast(stack_end)))
-                and stack_start < stack_end
-                and (stack_end - stack_start) < self.COREDUMP_MAX_TASK_STACK_SIZE)
+                or (self._esp_ptr_in_rtc_dram_fast(stack_start) and self._esp_ptr_in_rtc_dram_fast(stack_end))
+            )
+            and stack_start < stack_end
+            and (stack_end - stack_start) < self.COREDUMP_MAX_TASK_STACK_SIZE
+        )
 
     def addr_is_fake(self, addr):  # type: (int) -> bool
-        return (self.COREDUMP_FAKE_STACK_START <= addr < self.COREDUMP_FAKE_STACK_LIMIT
-                or addr > 2 ** 31 - 1)
+        return self.COREDUMP_FAKE_STACK_START <= addr < self.COREDUMP_FAKE_STACK_LIMIT or addr > 2**31 - 1

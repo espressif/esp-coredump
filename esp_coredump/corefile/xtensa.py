@@ -4,7 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-from typing import Any, Optional, Tuple
+from __future__ import annotations
+
+from typing import Any, Optional, Tuple  # noqa: F401
 
 from construct import Int16ul, Int32ul, Int64ul, Struct
 
@@ -20,36 +22,26 @@ XCHAL_EXCCAUSE_NUM = 64
 XTENSA_EXCEPTION_CAUSE_DICT = {
     0: ('IllegalInstructionCause', 'Illegal instruction'),
     1: ('SyscallCause', 'SYSCALL instruction'),
-    2: ('InstructionFetchErrorCause',
-        'Processor internal physical address or data error during instruction fetch. (See EXCVADDR for more information)'),
-    3: ('LoadStoreErrorCause',
-        'Processor internal physical address or data error during load or store. (See EXCVADDR for more information)'),
+    2: ('InstructionFetchErrorCause', 'Processor internal physical address or data error during instruction fetch. (See EXCVADDR for more information)'),
+    3: ('LoadStoreErrorCause', 'Processor internal physical address or data error during load or store. (See EXCVADDR for more information)'),
     4: ('Level1InterruptCause', 'Level-1 interrupt as indicated by set level-1 bits in the INTERRUPT register'),
     5: ('AllocaCause', 'MOVSP instruction, if caller`s registers are not in the register file'),
     6: ('IntegerDivideByZeroCause', 'QUOS: QUOU, REMS: or REMU divisor operand is zero'),
     8: ('PrivilegedCause', 'Attempt to execute a privileged operation when CRING ? 0'),
     9: ('LoadStoreAlignmentCause', 'Load or store to an unaligned address. (See EXCVADDR for more information)'),
     12: ('InstrPIFDataErrorCause', 'PIF data error during instruction fetch. (See EXCVADDR for more information)'),
-    13: ('LoadStorePIFDataErrorCause',
-         'Synchronous PIF data error during LoadStore access. (See EXCVADDR for more information)'),
+    13: ('LoadStorePIFDataErrorCause', 'Synchronous PIF data error during LoadStore access. (See EXCVADDR for more information)'),
     14: ('InstrPIFAddrErrorCause', 'PIF address error during instruction fetch. (See EXCVADDR for more information)'),
-    15: ('LoadStorePIFAddrErrorCause',
-         'Synchronous PIF address error during LoadStore access. (See EXCVADDR for more information)'),
+    15: ('LoadStorePIFAddrErrorCause', 'Synchronous PIF address error during LoadStore access. (See EXCVADDR for more information)'),
     16: ('InstTLBMissCause', 'Error during Instruction TLB refill. (See EXCVADDR for more information)'),
     17: ('InstTLBMultiHitCause', 'Multiple instruction TLB entries matched. (See EXCVADDR for more information)'),
-    18: ('InstFetchPrivilegeCause',
-         'An instruction fetch referenced a virtual address at a ring level less than CRING. (See EXCVADDR for more information)'),
-    20: ('InstFetchProhibitedCause',
-         'An instruction fetch referenced a page mapped with an attribute that does not permit instruction fetch (EXCVADDR).'),
+    18: ('InstFetchPrivilegeCause', 'An instruction fetch referenced a virtual address at a ring level less than CRING. (See EXCVADDR for more information)'),
+    20: ('InstFetchProhibitedCause', 'An instruction fetch referenced a page mapped with an attribute that does not permit instruction fetch (EXCVADDR)'),
     24: ('LoadStoreTLBMissCause', 'Error during TLB refill for a load or store. (See EXCVADDR for more information)'),
-    25: ('LoadStoreTLBMultiHitCause',
-         'Multiple TLB entries matched for a load or store. (See EXCVADDR for more information)'),
-    26: ('LoadStorePrivilegeCause',
-         'A load or store referenced a virtual address at a ring level less than CRING. (See EXCVADDR for more information)'),
-    28: ('LoadProhibitedCause',
-         'A load referenced a page mapped with an attribute that does not permit loads. (See EXCVADDR for more information)'),
-    29: ('StoreProhibitedCause',
-         'A store referenced a page mapped with an attribute that does not permit stores [Region Protection Option or MMU Option].'),
+    25: ('LoadStoreTLBMultiHitCause', 'Multiple TLB entries matched for a load or store. (See EXCVADDR for more information)'),
+    26: ('LoadStorePrivilegeCause', 'A load or store referenced a virtual address at a ring level less than CRING. (See EXCVADDR for more information)'),
+    28: ('LoadProhibitedCause', 'A load referenced a page mapped with an attribute that does not permit loads. (See EXCVADDR for more information)'),
+    29: ('StoreProhibitedCause', 'A store referenced a page mapped with an attribute that does not permit stores [Region Protection Option or MMU Option]'),
     32: ('Coprocessor0Disabled', 'Coprocessor 0 instruction when cp0 disabled'),
     33: ('Coprocessor1Disabled', 'Coprocessor 1 instruction when cp1 disabled'),
     34: ('Coprocessor2Disabled', 'Coprocessor 2 instruction when cp2 disabled'),
@@ -59,7 +51,9 @@ XTENSA_EXCEPTION_CAUSE_DICT = {
     38: ('Coprocessor6Disabled', 'Coprocessor 6 instruction when cp6 disabled'),
     39: ('Coprocessor7Disabled', 'Coprocessor 7 instruction when cp7 disabled'),
     INVALID_CAUSE_VALUE: (
-        'InvalidCauseRegister', 'Invalid EXCCAUSE register value or current task is broken and was skipped'),
+        'InvalidCauseRegister',
+        'Invalid EXCCAUSE register value or current task is broken and was skipped',
+    ),
     # ESP panic pseudo reasons
     XCHAL_EXCCAUSE_NUM + 0: ('UnknownException', 'Unknown exception'),
     XCHAL_EXCCAUSE_NUM + 1: ('DebugException', 'Unhandled debug exception'),
@@ -72,7 +66,7 @@ XTENSA_EXCEPTION_CAUSE_DICT = {
 }
 
 
-class ExceptionRegisters(object):
+class ExceptionRegisters:
     # extra regs IDs used in EXTRA_INFO note
     EXCCAUSE_IDX = 0
     EXCVADDR_IDX = 1
@@ -92,8 +86,7 @@ class ExceptionRegisters(object):
 
     @property
     def registers(self):  # type: () -> dict[str, int]
-        return {k: v for k, v in self.__class__.__dict__.items()
-                if not k.startswith('__') and isinstance(v, int)}
+        return {k: v for k, v in self.__class__.__dict__.items() if not k.startswith('__') and isinstance(v, int)}
 
 
 # Following structs are based on source code
@@ -126,19 +119,25 @@ def print_exc_regs_info(extra_info):  # type: (list[int]) -> None
     exccause = extra_info[1 + 2 * ExceptionRegisters.EXCCAUSE_IDX + 1]
     exccause_str = XTENSA_EXCEPTION_CAUSE_DICT.get(exccause)
     if not exccause_str:
-        exccause_str = ('Invalid EXCCAUSE code', 'Invalid EXCAUSE description or not found.')
-    print('exccause       0x%x (%s)' % (exccause, exccause_str[0]))
-    print('excvaddr       0x%x' % extra_info[1 + 2 * ExceptionRegisters.EXCVADDR_IDX + 1])
+        exccause_str = (
+            'Invalid EXCCAUSE code',
+            'Invalid EXCAUSE description or not found.',
+        )
+    print(f'exccause       0x{exccause:x} ({exccause_str[0]})')
+    excvaddr = extra_info[1 + 2 * ExceptionRegisters.EXCVADDR_IDX + 1]
+    print(f'excvaddr       0x{excvaddr:x}')
 
     # skip crashed_task_tcb, exccause, and excvaddr
     for i in range(5, len(extra_info), 2):
-        if (extra_info[i] >= ExceptionRegisters.EPC1_IDX and extra_info[i] <= ExceptionRegisters.EPC7_IDX):
-            print('epc%d           0x%x' % ((extra_info[i] - ExceptionRegisters.EPC1_IDX + 1), extra_info[i + 1]))
+        if extra_info[i] >= ExceptionRegisters.EPC1_IDX and extra_info[i] <= ExceptionRegisters.EPC7_IDX:
+            n = extra_info[i] - ExceptionRegisters.EPC1_IDX + 1
+            print(f'epc{n}           0x{extra_info[i + 1]:x}')
 
     # skip crashed_task_tcb, exccause, and excvaddr
     for i in range(5, len(extra_info), 2):
-        if (extra_info[i] >= ExceptionRegisters.EPS2_IDX and extra_info[i] <= ExceptionRegisters.EPS7_IDX):
-            print('eps%d           0x%x' % ((extra_info[i] - ExceptionRegisters.EPS2_IDX + 2), extra_info[i + 1]))
+        if extra_info[i] >= ExceptionRegisters.EPS2_IDX and extra_info[i] <= ExceptionRegisters.EPS7_IDX:
+            n = extra_info[i] - ExceptionRegisters.EPS2_IDX + 2
+            print(f'eps{n}           0x{extra_info[i + 1]:x}')
 
 
 # from "gdb/xtensa-tdep.h"
@@ -200,11 +199,9 @@ class XtensaMethodsMixin(BaseArchMethodsMixin):
         # TODO: support for growing up stacks
         if not grows_down:
             raise ESPCoreDumpLoaderError('Growing up stacks are not supported for now!')
-        ex_struct = Struct(
-            'stack' / Int32ul[XT_STK_FRMSZ]
-        )
+        ex_struct = Struct('stack' / Int32ul[XT_STK_FRMSZ])
         if len(data) < ex_struct.sizeof():
-            raise ESPCoreDumpLoaderError('Too small stack to keep frame: %d bytes!' % len(data))
+            raise ESPCoreDumpLoaderError(f'Too small stack to keep frame: {len(data)} bytes!')
 
         stack = ex_struct.parse(data).stack
         # Stack frame type indicator is always the first item
@@ -219,7 +216,7 @@ class XtensaMethodsMixin(BaseArchMethodsMixin):
             regs[REG_LE_IDX] = stack[XT_STK_LEND]
             regs[REG_LC_IDX] = stack[XT_STK_LCOUNT]
             # FIXME: crashed and some running tasks (e.g. prvIdleTask) have EXCM bit set
-            #   and GDB can not unwind callstack properly (it implies not windowed call0)
+            # and GDB can not unwind callstack properly (it implies not windowed call0)
             if regs[REG_PS_IDX] & (1 << 5):
                 regs[REG_PS_IDX] &= ~(1 << 4)
             if stack[XT_STK_EXCCAUSE] in XTENSA_EXCEPTION_CAUSE_DICT:
@@ -237,23 +234,25 @@ class XtensaMethodsMixin(BaseArchMethodsMixin):
 
     @staticmethod
     def build_prstatus_data(tcb_addr, task_regs):  # type: (int, list[int]) -> Any
-        return PrStatus.build({
-            'si_signo': 0,
-            'si_code': 0,
-            'si_errno': 0,
-            'pr_cursig': 0,  # TODO: set sig only for current/failed task
-            'pr_pad0': 0,
-            'pr_sigpend': 0,
-            'pr_sighold': 0,
-            'pr_pid': tcb_addr,
-            'pr_ppid': 0,
-            'pr_pgrp': 0,
-            'pr_sid': 0,
-            'pr_utime': 0,
-            'pr_stime': 0,
-            'pr_cutime': 0,
-            'pr_cstime': 0,
-        }) + Int32ul[len(task_regs)].build(task_regs)
+        return PrStatus.build(
+            {
+                'si_signo': 0,
+                'si_code': 0,
+                'si_errno': 0,
+                'pr_cursig': 0,  # TODO: set sig only for current/failed task
+                'pr_pad0': 0,
+                'pr_sigpend': 0,
+                'pr_sighold': 0,
+                'pr_pid': tcb_addr,
+                'pr_ppid': 0,
+                'pr_pgrp': 0,
+                'pr_sid': 0,
+                'pr_utime': 0,
+                'pr_stime': 0,
+                'pr_cutime': 0,
+                'pr_cstime': 0,
+            }
+        ) + Int32ul[len(task_regs)].build(task_regs)
 
 
 class Esp32Methods(BaseTargetMethods, XtensaMethodsMixin):

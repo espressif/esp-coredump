@@ -3,7 +3,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This script will parse soc.h and generate .py file containing all of the target constants.
+# This script will parse soc.h and generate .py file containing all of the target
+# constants.
 # Once one manually adds a new target, the constants file can be regenerated.
 # The script is ESP-IDF dependent and is not intended for use by end users.
 #
@@ -31,11 +32,15 @@ def main():  # type: () -> None
 
     for target in SUPPORTED_TARGETS:
         target_constants = {}
-        soc_header_fp = os.path.join(IDF_PATH, 'components/soc/{}/include/soc/soc.h'.format(target))  # type: ignore
-        module_fp = os.path.join(os.path.normpath(os.path.abspath(os.path.dirname(__file__))),
-                                 'soc_headers',
-                                 '{}.py'.format(target)
-                                 )
+        soc_header_fp = os.path.join(
+            IDF_PATH,  # type: ignore
+            f'components/soc/{target}/include/soc/soc.h',
+        )
+        module_fp = os.path.join(
+            os.path.normpath(os.path.abspath(os.path.dirname(__file__))),
+            'soc_headers',
+            '{}.py'.format(target),
+        )
 
         with open(soc_header_fp) as fr:
             for line in fr.readlines():
@@ -45,7 +50,10 @@ def main():  # type: () -> None
 
         for attr in constants:
             if attr not in target_constants:
-                print(f'WARNING: {attr} is missing in {soc_header_fp}, check if this is correct!', file=sys.stderr)
+                print(
+                    f'WARNING: {attr} is missing in {soc_header_fp}, check if this is correct!',
+                    file=sys.stderr,
+                )
                 target_constants[attr] = 2**32 - 1
 
         with open(module_fp, 'w') as fw:

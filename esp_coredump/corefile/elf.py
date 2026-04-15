@@ -6,11 +6,22 @@
 
 import hashlib
 import os
-from typing import Optional
+from typing import Optional  # noqa: F401
 
-from construct import (AlignedStruct, Bytes, Const, Container, GreedyRange,
-                       Int16ul, Int32ul, Padding, Pointer, Sequence, Struct,
-                       this)
+from construct import (
+    AlignedStruct,
+    Bytes,
+    Const,
+    Container,  # noqa: F401
+    GreedyRange,
+    Int16ul,
+    Int32ul,
+    Padding,
+    Pointer,
+    Sequence,
+    Struct,
+    this,
+)
 
 # Following structs are based on spec
 # https://refspecs.linuxfoundation.org/elf/elf.pdf
@@ -84,7 +95,7 @@ NoteSection = AlignedStruct(
 NoteSections = GreedyRange(NoteSection)
 
 
-class ElfFile(object):
+class ElfFile:
     """
     Elf class to a single elf file
     """
@@ -134,19 +145,21 @@ class ElfFile(object):
         self._struct = self._generate_struct_from_headers(header_tables)
         self._model = self._struct.parse(elf_bytes)
 
-        self.load_segments = [ElfSegment(seg.ph.p_vaddr,
-                                         seg.data,
-                                         seg.ph.p_flags) for seg in self._model.load_segments]
-        self.note_segments = [ElfNoteSegment(seg.ph.p_vaddr,
-                                             seg.data,
-                                             seg.ph.p_flags) for seg in self._model.note_segments]
-        self.sections = [ElfSection(self._parse_string_table(self._model.string_table, sec.sh.sh_name),
-                                    sec.sh.sh_addr,
-                                    sec.data,
-                                    sec.sh.sh_flags) for sec in self._model.sections]
+        self.load_segments = [ElfSegment(seg.ph.p_vaddr, seg.data, seg.ph.p_flags) for seg in self._model.load_segments]
+        self.note_segments = [ElfNoteSegment(seg.ph.p_vaddr, seg.data, seg.ph.p_flags) for seg in self._model.note_segments]
+        self.sections = [
+            ElfSection(
+                self._parse_string_table(self._model.string_table, sec.sh.sh_name),
+                sec.sh.sh_addr,
+                sec.data,
+                sec.sh.sh_flags,
+            )
+            for sec in self._model.sections
+        ]
 
-        # calculate sha256 of the input bytes (note: this may not be the same as the sha256 of any generated
-        # output struct, as the ELF parser may change some details.)
+        # calculate sha256 of the input bytes
+        # (note: may differ from sha256 of any generated output struct,
+        # as the ELF parser may change some details)
         sha256 = hashlib.sha256()
         sha256.update(elf_bytes)
         self.sha256 = sha256.digest()
@@ -156,7 +169,7 @@ class ElfFile(object):
         section_name_str = byte_str[offset:]
         string_end = section_name_str.find(0x00)
 
-        if (string_end == -1):
+        if string_end == -1:
             raise ValueError('Unable to get section name from section header string table')
 
         name = section_name_str[:string_end].decode('utf-8')
@@ -194,10 +207,16 @@ class ElfFile(object):
             if sh.sh_type == self.SHT_STRTAB and i == elf_header.e_shstrndx:
                 string_table_sh = sh
             elif sh.sh_addr != 0 and sh.sh_type == self.SHT_PROGBITS:
-                section_subcons.append(Struct(
-                    'sh' / Pointer(elf_header.e_shoff + i * SectionHeader.sizeof(), SectionHeader),
-                    'data' / Pointer(sh.sh_offset, Bytes(sh.sh_size)),
-                ))
+                section_subcons.append(
+                    Struct(
+                        'sh'
+                        / Pointer(
+                            elf_header.e_shoff + i * SectionHeader.sizeof(),
+                            SectionHeader,
+                        ),
+                        'data' / Pointer(sh.sh_offset, Bytes(sh.sh_size)),
+                    )
+                )
 
         args = [
             'elf_header' / ElfHeader,
@@ -211,11 +230,11 @@ class ElfFile(object):
         return Struct(*args)
 
 
-class ElfSection(object):
+class ElfSection:
     SHF_WRITE = 0x01
     SHF_ALLOC = 0x02
     SHF_EXECINSTR = 0x04
-    SHF_MASKPROC = 0xf0000000
+    SHF_MASKPROC = 0xF0000000
 
     def __init__(self, name, addr, data, flags):  # type: (str, int, bytes, int) -> None
         self.name = name
@@ -234,11 +253,10 @@ class ElfSection(object):
         return res
 
     def __repr__(self):  # type: () -> str
-        return '{:>32} [Addr] 0x{:>08X}, [Size] 0x{:>08X} {:>4}' \
-            .format(self.name, self.addr, len(self.data), self.attr_str())
+        return '{:>32} [Addr] 0x{:>08X}, [Size] 0x{:>08X} {:>4}'.format(self.name, self.addr, len(self.data), self.attr_str())
 
 
-class ElfSegment(object):
+class ElfSegment:
     PF_X = 0x01
     PF_W = 0x02
     PF_R = 0x04
@@ -261,13 +279,12 @@ class ElfSegment(object):
         return 'LOAD'
 
     def __repr__(self):  # type: () -> str
-        return '{:>8} Addr 0x{:>08X}, Size 0x{:>08X} Flags {:4}' \
-            .format(self._type_str(), self.addr, len(self.data), self.attr_str())
+        return '{:>8} Addr 0x{:>08X}, Size 0x{:>08X} Flags {:4}'.format(self._type_str(), self.addr, len(self.data), self.attr_str())
 
 
 class ElfNoteSegment(ElfSegment):
     def __init__(self, addr, data, flags):  # type: (int, bytes, int) -> None
-        super(ElfNoteSegment, self).__init__(addr, data, flags)
+        super().__init__(addr, data, flags)
         self.type = ElfFile.PT_NOTE
         self.note_secs = NoteSections.parse(self.data)
         for note in self.note_secs:
@@ -303,7 +320,7 @@ class ESPCoreDumpElfFile(ElfFile):
     PT_ESP_TASK_INFO = 678
     PT_ESP_EXTRA_INFO = 677
 
-    CURR_TASK_MARKER = 0xdeadbeef
+    CURR_TASK_MARKER = 0xDEADBEEF
 
     # ELF file machine type
     EM_XTENSA = 0x5E
@@ -313,7 +330,7 @@ class ESPCoreDumpElfFile(ElfFile):
         # type: (Optional[str], Optional[int], Optional[int]) -> None
         _e_type = e_type or self.ET_CORE
         _e_machine = e_machine or self.EM_XTENSA
-        super(ESPCoreDumpElfFile, self).__init__(elf_path, _e_type, _e_machine)
+        super().__init__(elf_path, _e_type, _e_machine)
 
     def add_segment(self, addr, data, seg_type, flags):  # type: (int, bytes, int, int) -> None
         if seg_type != self.PT_NOTE:
@@ -328,35 +345,39 @@ class ESPCoreDumpElfFile(ElfFile):
         :return: None
         """
         res = b''
-        res += ElfHeader.build({
-            'e_type': self.e_type,
-            'e_machine': self.e_machine,
-            'e_version': self.EV_CURRENT,
-            'e_entry': 0,
-            'e_phoff': ElfHeader.sizeof(),
-            'e_shoff': 0,
-            'e_flags': 0,
-            'e_ehsize': ElfHeader.sizeof(),
-            'e_phentsize': ProgramHeader.sizeof(),
-            'e_phnum': len(self.load_segments) + len(self.note_segments),
-            'e_shentsize': 0,
-            'e_shnum': 0,
-            'e_shstrndx': self.SHN_UNDEF,
-        })
+        res += ElfHeader.build(
+            {
+                'e_type': self.e_type,
+                'e_machine': self.e_machine,
+                'e_version': self.EV_CURRENT,
+                'e_entry': 0,
+                'e_phoff': ElfHeader.sizeof(),
+                'e_shoff': 0,
+                'e_flags': 0,
+                'e_ehsize': ElfHeader.sizeof(),
+                'e_phentsize': ProgramHeader.sizeof(),
+                'e_phnum': len(self.load_segments) + len(self.note_segments),
+                'e_shentsize': 0,
+                'e_shnum': 0,
+                'e_shstrndx': self.SHN_UNDEF,
+            }
+        )
 
         offset = ElfHeader.sizeof() + (len(self.load_segments) + len(self.note_segments)) * ProgramHeader.sizeof()
         _segments = self.load_segments + self.note_segments  # type: ignore
         for seg in _segments:
-            res += ProgramHeader.build({
-                'p_type': seg.type,
-                'p_offset': offset,
-                'p_vaddr': seg.addr,
-                'p_paddr': seg.addr,
-                'p_filesz': len(seg.data),
-                'p_memsz': len(seg.data),
-                'p_flags': seg.flags,
-                'p_align': 0,
-            })
+            res += ProgramHeader.build(
+                {
+                    'p_type': seg.type,
+                    'p_offset': offset,
+                    'p_vaddr': seg.addr,
+                    'p_paddr': seg.addr,
+                    'p_filesz': len(seg.data),
+                    'p_memsz': len(seg.data),
+                    'p_flags': seg.flags,
+                    'p_align': 0,
+                }
+            )
             offset += len(seg.data)
 
         for seg in _segments:
