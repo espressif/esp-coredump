@@ -11,6 +11,6 @@ class FatalError(Exception):
 
 
 def load_json_from_file(filename: str) -> dict:
-    with open(filename, 'r') as file:
+    with open(filename) as file:
         data: dict = json.load(file)
     return data

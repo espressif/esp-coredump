@@ -16,8 +16,7 @@ try:
     from esp_coredump.corefile.elf import ESPCoreDumpElfFile
     from esp_coredump.corefile.loader import ESPCoreDumpFileLoader
 except ImportError:
-    raise ModuleNotFoundError('No module named "esp_coredump" please install esp_coredump by running '
-                              '"python -m pip install esp-coredump"')
+    raise ModuleNotFoundError('No module named "esp_coredump" please install esp_coredump by running "python -m pip install esp-coredump"')
 
 SUPPORTED_TARGET = ['esp32', 'esp32c3', 'esp32p4', 'esp32c6']
 COREDUMP_FILE_NAME = 'coredump'
@@ -32,12 +31,19 @@ def coverage_run():
     """Run with coverage reporting if available"""
     try:
         import coverage  # noqa: F401
+
         yield ['coverage', 'run', '--parallel-mode']
     except ImportError:
         yield [sys.executable]
 
 
-def get_coredump_kwargs(core_ext: str, target: str, save_core: bool = False, auto_format: bool = False, bin_fmt: bool = False):
+def get_coredump_kwargs(
+    core_ext: str,
+    target: str,
+    save_core: bool = False,
+    auto_format: bool = False,
+    bin_fmt: bool = False,
+):
     core_format = 'auto' if auto_format else 'raw' if core_ext == 'bin' else core_ext
     coredump_filename = COREDUMP_BIN_FILE_NAME if bin_fmt else COREDUMP_FILE_NAME
     kwargs = {
@@ -59,10 +65,26 @@ def get_expected_output(target: str, bin_fmt: bool = False):
     return output
 
 
-def get_output(core_ext: str, target: str, save_core: bool = False, auto_format: bool = False, bin_fmt: bool = False):
-    kwargs = get_coredump_kwargs(core_ext=core_ext, save_core=save_core, target=target, auto_format=auto_format, bin_fmt=bin_fmt)
+def get_output(
+    core_ext: str,
+    target: str,
+    save_core: bool = False,
+    auto_format: bool = False,
+    bin_fmt: bool = False,
+):
+    kwargs = get_coredump_kwargs(
+        core_ext=core_ext,
+        save_core=save_core,
+        target=target,
+        auto_format=auto_format,
+        bin_fmt=bin_fmt,
+    )
     coredump = CoreDump(**kwargs)
-    output_file = os.path.join(TEST_DIR_ABS_PATH, target, f'output_from_{("bin_" if bin_fmt else "") + core_ext}')
+    output_file = os.path.join(
+        TEST_DIR_ABS_PATH,
+        target,
+        f'output_from_{("bin_" if bin_fmt else "") + core_ext}',
+    )
     with io.StringIO() as buffer, contextlib.redirect_stdout(buffer):
         coredump.info_corefile()
         output = buffer.getvalue()
@@ -82,14 +104,18 @@ def decode_from_b64_to_bin(target):
 
 
 class TestESPCoreDumpDecode:
-
     @pytest.mark.parametrize('target', SUPPORTED_TARGET)
     def test_coredump_decode_from_cli(self, coverage_run, target):
         proc = subprocess.run(
-            coverage_run + [
-                '-m', 'esp_coredump', 'info_corefile',
-                '--core', os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'),
-                '--save-core', os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.elf'),
+            coverage_run
+            + [
+                '-m',
+                'esp_coredump',
+                'info_corefile',
+                '--core',
+                os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'),
+                '--save-core',
+                os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.elf'),
                 '--print-mem',
                 os.path.join(ESP_PROG_DIR, f'{target}.elf'),
             ],
@@ -149,11 +175,17 @@ class TestESPCoreDumpFileLoader:
     @pytest.mark.parametrize('target', SUPPORTED_TARGET)
     def test_load_wrong_encode_core_bin(self, target):
         with pytest.raises(ESPCoreDumpLoaderError):
-            ESPCoreDumpFileLoader(path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'), is_b64=False)
+            ESPCoreDumpFileLoader(
+                path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'),
+                is_b64=False,
+            )
 
     @pytest.mark.parametrize('target', SUPPORTED_TARGET)
     def test_create_corefile(self, target):
-        loader = ESPCoreDumpFileLoader(path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'), is_b64=True)
+        loader = ESPCoreDumpFileLoader(
+            path=os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'),
+            is_b64=True,
+        )
         loader.create_corefile()
         assert os.path.exists(loader.core_elf_file)
 
@@ -162,9 +194,13 @@ class TestDebugCoredump:
     def test_dbg_corefile(self, coverage_run):
         target = 'esp32'
         proc = subprocess.Popen(
-            coverage_run + [
-                '-m', 'esp_coredump', 'dbg_corefile',
-                '--core', os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'),
+            coverage_run
+            + [
+                '-m',
+                'esp_coredump',
+                'dbg_corefile',
+                '--core',
+                os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64'),
                 os.path.join(ESP_PROG_DIR, f'{target}.elf'),
             ],
             stdout=subprocess.PIPE,

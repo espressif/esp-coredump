@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple  # noqa: F401
 
 from construct import Int16ul, Int32ul, Padding, Struct
 
@@ -24,7 +24,7 @@ PrStruct = Struct(
     'pr_pid' / Int32ul,
     Padding(PRSTATUS_OFFSET_PR_REG - PRSTATUS_OFFSET_PR_PID - Int32ul.sizeof()),
     'regs' / Int32ul[RISCV_GP_REGS_COUNT],
-    Padding(PRSTATUS_SIZE - PRSTATUS_OFFSET_PR_REG - ELF_GREGSET_T_SIZE)
+    Padding(PRSTATUS_SIZE - PRSTATUS_OFFSET_PR_REG - ELF_GREGSET_T_SIZE),
 )
 
 
@@ -39,11 +39,13 @@ class RiscvMethodsMixin(BaseArchMethodsMixin):
 
     @staticmethod
     def build_prstatus_data(tcb_addr, task_regs):  # type: (int, list[int]) -> Any
-        return PrStruct.build({
-            'pr_cursig': 0,
-            'pr_pid': tcb_addr,
-            'regs': task_regs,
-        })
+        return PrStruct.build(
+            {
+                'pr_cursig': 0,
+                'pr_pid': tcb_addr,
+                'regs': task_regs,
+            }
+        )
 
 
 class Esp32C3Methods(BaseTargetMethods, RiscvMethodsMixin):
