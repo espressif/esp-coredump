@@ -29,6 +29,9 @@ dependencies = [
     "construct~=2.10",
     "pygdbmi>=0.9.0.2",
     "esptool",
+    "esp-pylib[cli]>=1.1.0",
+    "rich-click",
+    "rich",
 ]
 
 [project.readme]

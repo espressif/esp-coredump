@@ -9,6 +9,8 @@ from abc import ABC, abstractmethod
 from importlib import import_module
 from typing import Optional, Tuple  # noqa: F401
 
+from esp_pylib.errors import FatalError
+
 from .elf import ElfFile
 
 __all__ = ['ElfFile', 'ESPCoreDumpLoaderError']
@@ -29,7 +31,7 @@ RISCV_TARGETS = [
 SUPPORTED_TARGETS = XTENSA_TARGETS + RISCV_TARGETS
 
 
-class ESPCoreDumpError(RuntimeError):
+class ESPCoreDumpError(FatalError):
     pass
 
 

@@ -18,12 +18,9 @@ from typing import Optional, Tuple  # noqa: F401
 
 import serial
 
-from .tools import load_json_from_file
-
 try:
     # esptool>=4.0
     from esptool.cmds import detect_chip
-    from esptool.loader import ESPLoader
 except (AttributeError, ModuleNotFoundError):
     # esptool<4.0
     from esptool import ESPLoader
@@ -31,6 +28,11 @@ except (AttributeError, ModuleNotFoundError):
     detect_chip = ESPLoader.detect_chip
 
 from construct import Container, GreedyRange, Int32ul, ListContainer, Struct  # noqa: F401
+from esp_pylib.constants import ESP_ROM_BAUD
+from esp_pylib.rom import get_idf_path, get_rom_elf_dir
+from esp_pylib.rom import get_rom_elf_path as _pylib_get_rom_elf_path
+
+from esp_coredump.log import log
 
 from .corefile import RISCV_TARGETS, SUPPORTED_TARGETS, XTENSA_TARGETS, xtensa
 from .corefile.elf import (
@@ -48,15 +50,6 @@ from .corefile.loader import (
     EspCoreDumpVersion,
     get_core_file_format,
 )
-
-IDF_PATH = os.getenv('IDF_PATH', '')
-ESP_ROM_ELF_DIR = os.getenv('ESP_ROM_ELF_DIR')
-# 'tools/idf_py_actions/roms.json' is used for compatibility with ESP-IDF before v5.5,
-# when the file was moved
-ROMS_JSON = [
-    os.path.join(IDF_PATH, 'components', 'esp_rom', 'roms.json'),
-    os.path.join(IDF_PATH, 'tools', 'idf_py_actions', 'roms.json'),
-]
 
 MORE_INFO_MSG = 'Read more: https://github.com/espressif/esp-coredump/blob/master/README.md#installation'
 GDB_NOT_FOUND_ERROR = f'GDB executable not found. Please install GDB or set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
@@ -76,7 +69,7 @@ else:
 class CoreDump:
     def __init__(
         self,
-        baud: int | None = int(os.environ.get('ESPTOOL_BAUD', ESPLoader.ESP_ROM_BAUD)),
+        baud: int | None = int(os.environ.get('ESPTOOL_BAUD', ESP_ROM_BAUD)),
         chip: str = os.environ.get('ESPTOOL_CHIP', 'auto'),
         core_format: str = 'auto',
         port: str | None = os.environ.get('ESPTOOL_PORT'),
@@ -151,9 +144,8 @@ class CoreDump:
 
         if not self.core:
             # Core file not specified, try to read core dump from flash.
-            if not IDF_PATH:
-                print(IDF_SETUP_ERROR)
-                sys.exit(1)
+            if not get_idf_path():
+                log.die(IDF_SETUP_ERROR)
             loader = ESPCoreDumpFlashLoader(
                 self.coredump_off,
                 port=self.port,
@@ -170,11 +162,7 @@ class CoreDump:
             chip_rev = self.extract_chip_rev_from_elf()
 
             if self.chip_rev is not None and chip_rev != self.chip_rev:
-                print(
-                    'Provided chip revision does not match the one extracted from the provided coredump elf file.',
-                    file=sys.stderr,
-                )
-                exit(1)
+                log.die('Provided chip revision does not match the one extracted from the provided coredump elf file.')
 
             core_dump_info_map['chip_rev'] = chip_rev
 
@@ -248,14 +236,12 @@ class CoreDump:
         try:
             inst = detect_chip(self.port, self.baud)
         except serial.serialutil.SerialException:
-            print(
+            log.die(
                 'Unable to identify the chip type. '
                 'Please use the --chip option to specify the chip type or '
                 'connect the board and provide the --port option to have '
-                'the chip type determined automatically.',
-                file=sys.stderr,
+                'the chip type determined automatically.'
             )
-            exit(1)
         else:
             target = inst.CHIP_NAME.lower().replace('-', '')
 
@@ -281,8 +267,7 @@ class CoreDump:
     def get_gdb_args(self, target, core_elf_path, chip_rev, is_dbg_mode=False):
         gdb_tool = self.get_gdb_path(target)
         if not gdb_tool:
-            print(GDB_NOT_FOUND_ERROR)
-            sys.exit(1)
+            log.die(GDB_NOT_FOUND_ERROR)
 
         rom_elf_path = self.get_rom_elf_path(target=target, chip_rev=chip_rev)
         rom_sym_cmd = self.load_aux_elf(rom_elf_path)
@@ -315,38 +300,16 @@ class CoreDump:
         if chip_rev is None:
             return ''
 
-        rom_file_path = ''
+        if not get_idf_path() or not get_rom_elf_dir():
+            log.print("The ROM ELF file won't be loaded automatically since you are running the utility out of IDF.")
+            return ''
 
-        if not IDF_PATH or not ESP_ROM_ELF_DIR:
-            print("The ROM ELF file won't be loaded automatically since you are running the utility out of IDF.")
-            return rom_file_path
+        rom_file_path = _pylib_get_rom_elf_path(target, chip_rev)
+        if not rom_file_path:
+            log.print("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
+            return ''
 
-        target_roms = None
-        for rom_json_path in ROMS_JSON:
-            try:
-                roms_json = load_json_from_file(rom_json_path)
-                target_roms = roms_json.get(target, [])
-                break
-            except FileNotFoundError:
-                continue
-
-        if not target_roms:
-            print("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
-            return rom_file_path
-
-        index = len(target_roms)
-        for idx in range(len(target_roms)):
-            if target_roms[idx].get('rev') == chip_rev:
-                index = idx
-                break
-        if index < len(target_roms):
-            chip_rev_from_json = target_roms[index]['rev']
-            rom_elf_file_name = f'{target}_rev{chip_rev_from_json}_rom.elf'
-            rom_file_path = os.path.join(ESP_ROM_ELF_DIR, rom_elf_file_name)
-        else:
-            print("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
-
-        return rom_file_path
+        return str(rom_file_path)
 
     def get_task_info_extra_note_tuple(self):  # type: () -> Tuple[Optional[list[str]], Optional[Container]]
         extra_note = None
@@ -550,17 +513,19 @@ class CoreDump:
         try:
             yield
         except ESPCoreDumpLoaderError as e:
-            print(f'Failed to load core dump: {e}', file=sys.stderr)
+            log.err(f'Failed to load core dump: {e}')
             if e.extra_output:
-                print('', file=sys.stderr)
-                print('┌────── Additional information about the error: ', file=sys.stderr)
-                print('│   ', file=sys.stderr)
-                print(textwrap.indent(e.extra_output, '│   '), file=sys.stderr)
-                print('│   ', file=sys.stderr)
-                print(
-                    '└────── end of additional information about the error.',
+                log.print('', file=sys.stderr)
+                log.print('┌────── Additional information about the error: ', file=sys.stderr)
+                log.print('│   ', file=sys.stderr)
+                log.print(
+                    textwrap.indent(e.extra_output.rstrip('\n'), '│   ', lambda line: True),
                     file=sys.stderr,
+                    markup=False,
+                    highlight=False,
                 )
+                log.print('│   ', file=sys.stderr)
+                log.print('└────── end of additional information about the error.', file=sys.stderr)
             raise SystemExit(1)
 
     def dbg_corefile(self):  # type: () -> Optional[list[str]]
