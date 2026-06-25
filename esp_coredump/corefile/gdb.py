@@ -4,13 +4,14 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-import logging
 import os
 import re
 import time
 from subprocess import TimeoutExpired
 
 from pygdbmi.gdbcontroller import GdbController
+
+from esp_coredump.log import log
 
 from . import ESPCoreDumpError
 
@@ -60,7 +61,7 @@ class EspGDB:
                         self.p.gdb_process.kill()
                 self.p.gdb_process = None
         except IndexError:
-            logging.warning('Attempt to terminate the GDB process failed, because it is already terminated. Skip.')
+            log.warn('Attempt to terminate the GDB process failed, because it is already terminated. Skip.')
 
     def _gdbmi_run_cmd_get_responses(
         self,

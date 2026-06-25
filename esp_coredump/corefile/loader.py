@@ -7,7 +7,6 @@
 import base64
 import binascii
 import hashlib
-import logging
 import os
 import subprocess
 import sys
@@ -26,6 +25,9 @@ from construct import (
     abs_,
     this,
 )
+from rich.markup import escape
+
+from esp_coredump.log import log
 
 from . import ESPCoreDumpLoaderError
 from .elf import (
@@ -422,7 +424,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
             try:
                 core_elf.add_segment(0, chip_rev_note, ElfFile.PT_NOTE, 0)
             except ESPCoreDumpLoaderError as e:
-                logging.warning(f'Skip core dump info NOTES segment {len(chip_rev_note)} bytes @ 0x0. (Reason: {e})')
+                log.warn(f'Skip core dump info NOTES segment {len(chip_rev_note)} bytes @ 0x0. (Reason: {e})')
             core_elf.dump(self.core_elf_file)
 
         # Read note segments from core file which are belong to tasks (TCB or stack)
@@ -438,8 +440,8 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                     )
                     coredump_sha256 = coredump_sha256_struct.parse(note_sec.desc[: coredump_sha256_struct.sizeof()])
 
-                    logging.debug(f'App SHA256: {app_sha256!r}')
-                    logging.debug(f'Core dump SHA256: {coredump_sha256!r}')
+                    log.debug(f'App SHA256: {app_sha256!r}')
+                    log.debug(f'Core dump SHA256: {coredump_sha256!r}')
 
                     # Actual coredump SHA may be shorter than a full SHA256 hash
                     # with NUL byte padding, according to the app's
@@ -524,7 +526,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                 elif task.task_header.tcb_addr and self.target_methods.addr_is_fake(task.task_header.tcb_addr):
                     task_status_kwargs['task_flags'] |= TASK_STATUS_TCB_CORRUPTED
             except ESPCoreDumpLoaderError as e:
-                logging.warning(
+                log.warn(
                     f'Skip TCB {self.header.tcbsz} bytes '  # type: ignore
                     f'@ 0x{task.task_header.tcb_addr:x}. (Reason: {e})'
                 )
@@ -550,14 +552,14 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                         ElfSegment.PF_R | ElfSegment.PF_W,
                     )
             except ESPCoreDumpLoaderError as e:
-                logging.warning(
+                log.warn(
                     f"Skip task's ({task_status_kwargs['task_tcb_addr']:x}) stack "
                     f'{task_status_kwargs["task_stack_len"]} bytes @ '
                     f'0x{task_status_kwargs["task_stack_start"]:x}. (Reason: {e})'
                 )
 
             try:
-                logging.debug(f'Stack start_end: 0x{task.task_header.stack_top:x} @ 0x{task.task_header.stack_end:x}')
+                log.debug(f'Stack start_end: 0x{task.task_header.stack_top:x} @ 0x{task.task_header.stack_end:x}')
                 task_regs, extra_regs = self.target_methods.get_registers_from_stack(task.stack, task.task_header.stack_end > task.task_header.stack_top)
             except Exception as e:
                 raise ESPCoreDumpLoaderError(str(e))
@@ -595,7 +597,7 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
 
         if self.dump_ver == self.BIN_V2:
             for header in coredump_data.mem_seg_headers:
-                logging.debug(f'Read memory segment {header.mem_sz} bytes @ 0x{header.mem_start:x}')
+                log.debug(f'Read memory segment {header.mem_sz} bytes @ 0x{header.mem_start:x}')
                 core_elf.add_segment(
                     header.mem_start,
                     header.data,
@@ -607,16 +609,16 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
         try:
             core_elf.add_segment(0, notes, ElfFile.PT_NOTE, 0)
         except ESPCoreDumpLoaderError as e:
-            logging.warning(f'Skip NOTES segment {len(notes)} bytes @ 0x0. (Reason: {e})')
+            log.warn(f'Skip NOTES segment {len(notes)} bytes @ 0x0. (Reason: {e})')
         # add core dump info notes
         try:
             core_elf.add_segment(0, core_dump_info_notes, ElfFile.PT_NOTE, 0)
         except ESPCoreDumpLoaderError as e:
-            logging.warning(f'Skip core dump info NOTES segment {len(core_dump_info_notes)} bytes @ 0x0. (Reason: {e})')
+            log.warn(f'Skip core dump info NOTES segment {len(core_dump_info_notes)} bytes @ 0x0. (Reason: {e})')
         try:
             core_elf.add_segment(0, task_info_notes, ElfFile.PT_NOTE, 0)
         except ESPCoreDumpLoaderError as e:
-            logging.warning(f'Skip failed tasks info NOTES segment {len(task_info_notes)} bytes @ 0x0. (Reason: {e})')
+            log.warn(f'Skip failed tasks info NOTES segment {len(task_info_notes)} bytes @ 0x0. (Reason: {e})')
         # dump core ELF
         core_elf.e_type = ElfFile.ET_CORE
         core_elf.dump(self.core_elf_file)  # type: ignore
@@ -654,17 +656,17 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             except subprocess.CalledProcessError as e:
                 last_exception = e
                 if attempt < RETRY_ATTEMPTS:
-                    logging.warning(f'{operation_name} failed (attempt {attempt}/{RETRY_ATTEMPTS}): {e}. Retrying in {RETRY_DELAY_SEC} seconds...')
+                    log.warn(f'{operation_name} failed (attempt {attempt}/{RETRY_ATTEMPTS}): {e}. Retrying in {RETRY_DELAY_SEC} seconds...')
                     time.sleep(RETRY_DELAY_SEC)
                 else:
-                    logging.error(f'{operation_name} failed after {RETRY_ATTEMPTS} attempts')
+                    log.err(f'{operation_name} failed after {RETRY_ATTEMPTS} attempts')
         raise last_exception
 
     def _get_core_src(self, off, target=None):  # type: (Optional[int], Optional[str]) -> None
         """
         Loads core dump from flash using esptool
         """
-        logging.info('Invoke esptool to read image.')
+        log.note('Invoke esptool to read image.')
         self._invoke_esptool(off=off, target=target)
 
     def _invoke_esptool(self, off=None, target=None):  # type: (Optional[int], Optional[str]) -> None
@@ -684,11 +686,11 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             (part_offset, part_size) = self._get_core_dump_partition_info()
             if not off:
                 off = part_offset  # set default offset if not specified
-                logging.warning(
+                log.warn(
                     f'The core dump image offset is not specified. Use partition offset: 0x{part_offset:x}.',
                 )
             if part_offset != off:
-                logging.warning(f'Predefined image offset: {off} does not match core dump partition offset: 0x{part_offset:x}')
+                log.warn(f'Predefined image offset: {off} does not match core dump partition offset: 0x{part_offset:x}')
 
             # Here we use V1 format to locate the size
             tool_args.extend(['read_flash', str(off), str(EspCoreDumpV1Header.sizeof())])
@@ -697,11 +699,11 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             # read core dump length
             et_out = self._retry_subprocess_check_output(tool_args, 'esptool read_flash (header)')
             if et_out:
-                logging.info(et_out.decode('utf-8'))
+                log.note(escape(et_out.decode('utf-8')))
 
             header = EspCoreDumpV1Header.parse(open(self.core_src_file, 'rb').read())  # type: ignore
             if not header or not 0 < header.tot_len <= part_size:
-                logging.error(f'Incorrect size of core dump image: {header.tot_len}, use partition size instead: {part_size}')
+                log.err(f'Incorrect size of core dump image: {header.tot_len}, use partition size instead: {part_size}')
                 coredump_len = part_size
             else:
                 coredump_len = header.tot_len
@@ -709,7 +711,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             tool_args[-2] = str(coredump_len)
             et_out = self._retry_subprocess_check_output(tool_args, 'esptool read_flash (full dump)')
             if et_out:
-                logging.info(et_out.decode('utf-8'))
+                log.note(escape(et_out.decode('utf-8')))
         except subprocess.CalledProcessError as e:
             raise ESPCoreDumpLoaderError(
                 f"esptool script execution failed with error {e.returncode}, failed command was: '{e.cmd}'",
@@ -720,7 +722,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
         """
         Get core dump partition info using parttool
         """
-        logging.info('Retrieving core dump partition offset and size...')
+        log.note('Retrieving core dump partition offset and size...')
         part_off = self.part_table_offset or self.ESP_COREDUMP_PART_TABLE_OFF
         try:
             tool_args = [
@@ -746,7 +748,7 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
             (offset_str, size_str) = res.rsplit(b'\n')[-1].split(b' ')
             size = int(size_str, 16)
             offset = int(offset_str, 16)
-            logging.info('Core dump partition offset=%d, size=%d', offset, size)
+            log.note(f'Core dump partition offset={offset}, size={size}')
         except subprocess.CalledProcessError as e:
             raise ESPCoreDumpLoaderError(
                 f"parttool script execution failed with error {e.returncode}, failed command was: '{' '.join(e.cmd)}'",
@@ -767,7 +769,7 @@ class ESPCoreDumpFileLoader(EspCoreDumpLoader):
         """
         Loads core dump from (raw binary or base64-encoded) file
         """
-        logging.debug('Load core dump from "%s", %s format', path, 'b64' if self.is_b64 else 'raw')
+        log.debug(f'Load core dump from "{escape(path)}", {"b64" if self.is_b64 else "raw"} format')
         if not self.is_b64:
             self.core_src_file = path
         else:
