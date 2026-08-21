@@ -1,6 +1,5 @@
 ===============================================================
 ==================== ESP32 CORE DUMP START ====================
-The ROM ELF file won't load automatically since it was not found for the provided chip type.
 
 Crashed task handle: 0x4080fe20, name: 'main', GDB name: 'process 1082195488'
 Crashed task is not in the interrupt context
@@ -44,8 +43,13 @@ pc             0x40804796	0x40804796 <panic_abort+18>
 #0  panic_abort (details=details@entry=0x4080fc7c "abort() was called at PC 0x4200c3d5 on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:483
 #1  0x40804754 in esp_system_abort (details=details@entry=0x4080fc7c "abort() was called at PC 0x4200c3d5 on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:87
 #2  0x40808c84 in abort () at /builds/espressif/esp-idf/components/newlib/src/abort.c:38
-#3  0x4200c3d8 in fail_once (unused=<optimized out>) at /Users/erhan/dev/esp-coredump/tests/test_apps/main/test_core_dump.c:14
-#4  0x40018ebe in ?? ()
+#3  0x4200c3d8 in __GNU_EH_FRAME_HDR ()
+#4  0x40018ebe in ets_write_char ()
+#5  0x4001925e in ets_vprintf ()
+#6  0x400193a6 in ets_printf ()
+#7  0x4200c3fe in __GNU_EH_FRAME_HDR ()
+#8  0x420128e6 in main_task (args=<error reading variable: value has been optimized out>) at /builds/espressif/esp-idf/components/freertos/app_startup.c:208
+#9  0x408054be in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:252
 
 ======================== THREADS INFO =========================
   Id   Target Id          Frame 
@@ -64,8 +68,13 @@ pc             0x40804796	0x40804796 <panic_abort+18>
 #0  panic_abort (details=details@entry=0x4080fc7c "abort() was called at PC 0x4200c3d5 on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:483
 #1  0x40804754 in esp_system_abort (details=details@entry=0x4080fc7c "abort() was called at PC 0x4200c3d5 on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:87
 #2  0x40808c84 in abort () at /builds/espressif/esp-idf/components/newlib/src/abort.c:38
-#3  0x4200c3d8 in fail_once (unused=<optimized out>) at /Users/erhan/dev/esp-coredump/tests/test_apps/main/test_core_dump.c:14
-#4  0x40018ebe in ?? ()
+#3  0x4200c3d8 in __GNU_EH_FRAME_HDR ()
+#4  0x40018ebe in ets_write_char ()
+#5  0x4001925e in ets_vprintf ()
+#6  0x400193a6 in ets_printf ()
+#7  0x4200c3fe in __GNU_EH_FRAME_HDR ()
+#8  0x420128e6 in main_task (args=<error reading variable: value has been optimized out>) at /builds/espressif/esp-idf/components/freertos/app_startup.c:208
+#9  0x408054be in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:252
 
 ==================== THREAD 2 (TCB: 0x40810578, name: 'IDLE') =====================
 #0  vPortTaskWrapper (pxCode=0x40805e78 <prvIdleTask>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:248
