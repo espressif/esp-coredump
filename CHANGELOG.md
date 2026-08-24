@@ -20,6 +20,17 @@
 </div>
 <hr>
 
+## v1.17.0 (2026-08-24)
+
+### ✨ New Features
+
+- Migrate esp-coredump to use esp-pylib as the base library *(Peter Dragun - 90c409b)*
+
+### 🐛 Bug Fixes
+
+- bump esp-pylib for next-lower ROM ELF revision fallback *(Erhan Kurubas - 3420b5a)*
+
+
 ## v1.16.0 (2026-04-08)
 
 ### ✨ New Features
