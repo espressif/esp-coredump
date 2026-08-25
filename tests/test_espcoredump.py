@@ -218,3 +218,29 @@ class TestDebugCoredump:
         assert 'GNU gdb (esp-gdb)' in stdout
         assert f'Reading symbols from {os.path.join(ESP_PROG_DIR, f"{target}.elf")}' in stdout
         assert 'Done!' in stdout
+
+
+class TestArgparseCompatParser:
+    def test_parser_idf_wrapper_argv(self):
+        from esp_coredump.cli_ext import parser
+
+        args = parser.parse_args(
+            [
+                '-b115200',
+                'info_corefile',
+                '--core-format',
+                'b64',
+                '--core',
+                'dump.b64',
+                '--save-core',
+                'dump.elf',
+                'app.elf',
+            ]
+        )
+        assert args.operation == 'info_corefile'
+        assert args.baud == 115200
+        assert args.core_format == 'b64'
+        assert args.core == 'dump.b64'
+        assert args.save_core == 'dump.elf'
+        assert args.prog == 'app.elf'
+        assert args.debug == 3
