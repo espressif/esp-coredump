@@ -1,11 +1,12 @@
 #
-# SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
 import os
 import sys
+from types import SimpleNamespace
 
 import rich_click as click
 from esp_pylib.cli_types import AnyIntType, BaudRateType, SerialPortType
@@ -131,3 +132,30 @@ def dbg_corefile(ctx, **opts):
 def info_corefile(ctx, **opts):
     """Print core dump info from file"""
     _run(ctx, 'info_corefile', **opts)
+
+
+class _ArgparseCompatParser:
+    """argparse-compatible facade over the Click CLI. Backward compatibility with ESP-IDF.
+
+    ESP-IDF's ``components/espcoredump/espcoredump.py`` does::
+
+        from esp_coredump.cli_ext import parser
+
+        args = parser.parse_args()
+    """
+
+    def parse_args(self, args=None):
+        argv = list(sys.argv[1:] if args is None else args)
+        with cli.make_context(cli.name or 'espcoredump', argv) as ctx:
+            if not ctx.protected_args:
+                raise SystemExit('Error: Missing command.')
+            operation = ctx.protected_args[0]
+            cmd = cli.get_command(ctx, operation)
+            if cmd is None:
+                raise SystemExit(f'Error: Unknown command {operation}')
+            with cmd.make_context(operation, ctx.args, parent=ctx) as sub_ctx:
+                values = {**ctx.params, **sub_ctx.params, 'operation': operation}
+        return SimpleNamespace(**values)
+
+
+parser = _ArgparseCompatParser()
