@@ -20,6 +20,13 @@
 </div>
 <hr>
 
+## v1.17.1 (2026-08-31)
+
+### 🐛 Bug Fixes
+
+- **cli_ext**: Add argparse compatibility with ESP-IDF *(Peter Dragun - a655573)*
+
+
 ## v1.17.0 (2026-08-24)
 
 ### ✨ New Features
