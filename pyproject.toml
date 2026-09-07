@@ -60,8 +60,9 @@ esp-coredump = "esp_coredump.__main__:main"
 [tool.setuptools]
 include-package-data = true
 
-[tool.setuptools.packages]
-find = {namespaces = false}
+[tool.setuptools.packages.find]
+include = ["esp_coredump*"]
+namespaces = false
 
 [tool.setuptools.dynamic]
 version = {attr = "esp_coredump.__version__"}
