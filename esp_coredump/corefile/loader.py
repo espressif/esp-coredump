@@ -8,6 +8,7 @@ import base64
 import binascii
 import hashlib
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -58,6 +59,32 @@ PARTTOOL_PY = os.path.join(IDF_PATH, 'components', 'partition_table', 'parttool.
 
 RETRY_ATTEMPTS = 3
 RETRY_DELAY_SEC = 3
+
+# ANSI CSI sequences (cursor-up, erase-line, etc.) that may precede parttool output
+# when esptool collapses a stage under FORCE_COLOR on a pipe.
+_CSI_RE = re.compile(rb'\x1b\[[0-9;?]*[ -/]*[@-~]')
+# parttool prints exactly: "<offset> <size>" (hex with 0x prefix)
+_PARTTOOL_OFFSET_SIZE_RE = re.compile(rb'^\s*(0x[0-9a-fA-F]+)\s+(0x[0-9a-fA-F]+)\s*$')
+
+
+def parse_parttool_offset_size(res):  # type: (bytes) -> Tuple[int, int]
+    """Parse offset and size from parttool ``get_partition_info`` stdout.
+
+    Scans lines from the end for a record that is exactly two integer fields.
+    Tolerates ``\\r`` and ANSI CSI from esptool stage collapse, but does not
+    treat progress text such as ``Reading from 0x...`` as partition info.
+    """
+    cleaned = _CSI_RE.sub(b'', res.replace(b'\r', b'\n'))
+    for line in reversed(cleaned.split(b'\n')):
+        match = _PARTTOOL_OFFSET_SIZE_RE.match(line)
+        if match:
+            offset_str, size_str = match.group(1), match.group(2)
+            return int(offset_str, 16), int(size_str, 16)
+    raise ESPCoreDumpLoaderError(
+        'Failed to parse coredump partition offset and size from parttool output',
+        extra_output=res.decode('utf-8', 'ignore'),
+    )
+
 
 # Following structs are based on source code
 # components/espcoredump/include_core_dump/esp_core_dump_priv.h
@@ -744,10 +771,8 @@ class ESPCoreDumpFlashLoader(EspCoreDumpLoader):
                 'offset',
                 'size',
             ]
-            res = self._retry_subprocess_check_output(invoke_args, 'parttool get_partition_info').strip()
-            (offset_str, size_str) = res.rsplit(b'\n')[-1].split(b' ')
-            size = int(size_str, 16)
-            offset = int(offset_str, 16)
+            res = self._retry_subprocess_check_output(invoke_args, 'parttool get_partition_info')
+            offset, size = parse_parttool_offset_size(res)
             log.note(f'Core dump partition offset={offset}, size={size}')
         except subprocess.CalledProcessError as e:
             raise ESPCoreDumpLoaderError(
