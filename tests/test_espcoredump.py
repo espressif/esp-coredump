@@ -14,7 +14,7 @@ try:
     from esp_coredump import CoreDump
     from esp_coredump.corefile import ESPCoreDumpLoaderError
     from esp_coredump.corefile.elf import ESPCoreDumpElfFile
-    from esp_coredump.corefile.loader import ESPCoreDumpFileLoader
+    from esp_coredump.corefile.loader import ESPCoreDumpFileLoader, parse_parttool_offset_size
 except ImportError:
     raise ModuleNotFoundError('No module named "esp_coredump" please install esp_coredump by running "python -m pip install esp-coredump"')
 
@@ -161,6 +161,38 @@ class TestESPCoreDumpDecode:
         output = get_output(core_ext=format, target=target, auto_format=True)
         expected_output = get_expected_output(target)
         assert expected_output == output
+
+
+class TestParseParttoolOffsetSize:
+    def test_clean_two_field_line(self):
+        offset, size = parse_parttool_offset_size(b'Running esptool...\n0x110000 0x10000\n')
+        assert offset == 0x110000
+        assert size == 0x10000
+
+    def test_csi_prefixed_two_fields(self):
+        # Ensure partition info prefixed with CSI control sequences is parsed correctly.
+        # This is defensive; normal esptool output should end with the hard-reset message.
+        res = b'Reading 3072 bytes...\n\x1b[1A\x1b[2K0x110000 0x10000\n'
+        offset, size = parse_parttool_offset_size(res)
+        assert offset == 0x110000
+        assert size == 0x10000
+
+    def test_hard_reset_only_raises_with_extra_output(self):
+        res = b'Hard resetting via RTS pin...\n'
+        with pytest.raises(ESPCoreDumpLoaderError) as exc_info:
+            parse_parttool_offset_size(res)
+        assert 'Hard resetting via RTS pin...' in (exc_info.value.extra_output or '')
+
+    def test_progress_line_with_single_hex_is_not_partition_info(self):
+        res = b'Reading from 0x00008000 ========== 100.0% 3.00kB/3.00kB [0s] \n'
+        with pytest.raises(ESPCoreDumpLoaderError):
+            parse_parttool_offset_size(res)
+
+    def test_prefers_last_matching_line(self):
+        res = b'Reading from 0x00008000\n0x100000 0x2000\n0x110000 0x10000\n'
+        offset, size = parse_parttool_offset_size(res)
+        assert offset == 0x110000
+        assert size == 0x10000
 
 
 class TestESPCoreDumpElfFile:
