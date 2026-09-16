@@ -20,6 +20,14 @@
 </div>
 <hr>
 
+## v1.17.2 (2026-09-16)
+
+### 🐛 Bug Fixes
+
+- Make parttool parser more robust *(Peter Dragun - 6cf19b8)*
+- Exclude tests from package *(Peter Dragun - 347c40b)*
+
+
 ## v1.17.1 (2026-08-31)
 
 ### 🐛 Bug Fixes
