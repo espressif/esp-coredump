@@ -34,7 +34,7 @@ from esp_pylib.rom import get_rom_elf_path as _pylib_get_rom_elf_path
 
 from esp_coredump.log import log
 
-from .corefile import RISCV_TARGETS, SUPPORTED_TARGETS, XTENSA_TARGETS, xtensa
+from .corefile import RISCV_TARGETS, SUPPORTED_TARGETS, XTENSA_TARGETS, riscv, xtensa
 from .corefile.elf import (
     TASK_STATUS_CORRECT,
     ElfFile,
@@ -407,7 +407,9 @@ class CoreDump:
             if extra_note and extra_info:
                 xtensa.print_exc_regs_info(extra_info)
             else:
-                print('Exception registers have not been found!')
+                log.warn('Exception registers have not been found!')
+        elif self.exe_elf.e_machine == ESPCoreDumpElfFile.EM_RISCV:
+            riscv.print_exc_regs_info(self.core_elf, extra_info)
         print(self.gdb_esp.run_cmd('info registers'))
 
     def print_isr_context(self, extra_info):
@@ -591,7 +593,6 @@ class CoreDump:
             print('Panic reason: ' + panic_details.desc.decode('utf-8'))
 
         print('\n================== CURRENT THREAD REGISTERS ===================')
-        # Only xtensa have exception registers
         self.print_current_thread_registers(extra_note, extra_info)
 
         print('\n==================== CURRENT THREAD STACK =====================')

@@ -6,6 +6,12 @@ Crashed task is not in the interrupt context
 Panic reason: abort() was called at PC 0x4200c3d5 on core 0
 
 ================== CURRENT THREAD REGISTERS ===================
+mepc           0x40804796
+mstatus        0x1881
+mtvec          0x40800001
+mcause         0x2 (Illegal instruction)
+mtval          0x0
+mhartid        0x0
 ra             0x40804754	0x40804754 <esp_vApplicationTickHook>
 sp             0x4080fc50	0x4080fc50
 gp             0x4080b104	0x4080b104 <s_retention+308>
