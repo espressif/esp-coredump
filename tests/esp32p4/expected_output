@@ -6,6 +6,12 @@ Crashed task is not in the interrupt context
 Panic reason: abort() was called at PC 0x40008987 on core 0
 
 ================== CURRENT THREAD REGISTERS ===================
+mepc           0x4ff009d8
+mstatus        0x1880
+mtvec          0x4ff00003
+mcause         0x7 (Store access fault)
+mtval          0x0
+mhartid        0x0
 ra             0x4ff03f5c	0x4ff03f5c <__ubsan_include>
 sp             0x4ff0f2e0	0x4ff0f2e0
 gp             0x4ff0af10	0x4ff0af10 <s_ipc_mutex_buffer+116>
