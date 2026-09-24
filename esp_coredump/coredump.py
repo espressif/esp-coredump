@@ -50,6 +50,7 @@ from .corefile.loader import (
     EspCoreDumpVersion,
     get_core_file_format,
 )
+from .corefile.riscv_trace import parse_riscv_trace_note
 
 MORE_INFO_MSG = 'Read more: https://github.com/espressif/esp-coredump/blob/master/README.md#installation'
 GDB_NOT_FOUND_ERROR = f'GDB executable not found. Please install GDB or set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
@@ -483,7 +484,12 @@ class CoreDump:
         for ms in merged_segs:
             print(f'{ms[0]} 0x{ms[1]:x} 0x{ms[2]:x} {ms[3]}')
 
+        trace_regions = self._riscv_trace_regions()
         for cs in core_segs:
+            name = trace_regions.get(cs.addr)
+            if name is not None:
+                print(f'{name} 0x{cs.addr:x} 0x{len(cs.data):x} {cs.attr_str()}')
+                continue
             # core dump exec segments are from ROM,
             # other are belong to tasks
             if cs.flags & ElfSegment.PF_X:
@@ -491,6 +497,39 @@ class CoreDump:
             else:
                 seg_name = 'tasks.data'
             print(f'.coredump.{seg_name} 0x{cs.addr:x} 0x{len(cs.data):x} {cs.attr_str()}')
+
+    def _riscv_trace_regions(self):  # type: () -> dict[int, str]
+        # Map each stored trace buffer to a per-core region name via the ESP_RISCV_TRACE note.
+        snapshot = parse_riscv_trace_note(self.core_elf)
+        if snapshot is None:
+            return {}
+        return {core.buffer_addr: f'.trace.core{core.core_id}.data' for core in snapshot.cores if core.buffer_present}
+
+    def print_riscv_trace_info(self):  # type: () -> None
+        snapshot = parse_riscv_trace_note(self.core_elf)
+        if snapshot is None:
+            return
+        print('\n===================== RISC-V TRACE SNAPSHOT =====================')
+        print(f'ABI {snapshot.abi_major}.{snapshot.abi_minor}, reason {snapshot.capture_reason_name}, cores {snapshot.core_count}')
+        print(f'Target 0x{snapshot.target_id:04x}, chip revision v{snapshot.chip_revision // 100}.{snapshot.chip_revision % 100}')
+        if any(snapshot.app_elf_sha256):
+            print(f'App ELF SHA256: {snapshot.app_elf_sha256.hex()}')
+        for core in snapshot.cores:
+            print(f'Core {core.core_id}: memory {core.memory_mode_name}, format {core.packet_format_name}, address {core.address_mode_name}')
+            print(f'  resync {core.resync_mode_name}, threshold {core.resync_threshold}')
+            if core.buffer_present:
+                head = f'0x{core.head_offset:x}' if core.head_valid else 'invalid'
+                print(f'  buffer 0x{core.buffer_addr:x}, capacity 0x{core.capacity:x}, head {head}, segment {core.segment_index}')
+            else:
+                print('  no buffer')
+            print(
+                f'  hw fifo 0x{core.fifo_status_raw:08x}, intr 0x{core.intr_status_raw:08x}, '
+                f'empty {"yes" if core.fifo_empty else "no"}, '
+                f'full {"yes" if core.memory_full else "no"}, '
+                f'overflow {"yes" if core.fifo_overflow else "no"}'
+            )
+            if core.quality_flags:
+                print(f'  quality: {", ".join(core.quality_flags)}')
 
     def print_core_dump_memory_contents(self):  # type: () -> None
         for cs in self.core_elf.load_segments:
@@ -601,6 +640,8 @@ class CoreDump:
         self.print_threads_info(task_info)
         print('\n\n======================= ALL MEMORY REGIONS ========================')
         self.print_all_memory_regions()
+
+        self.print_riscv_trace_info()
 
         if self.print_mem:
             print('\n====================== CORE DUMP MEMORY CONTENTS ========================')
