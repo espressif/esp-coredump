@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+from __future__ import annotations
+
 from typing import Any, Optional, Tuple  # noqa: F401
 
 from construct import Int16ul, Int32ul, Padding, Struct
