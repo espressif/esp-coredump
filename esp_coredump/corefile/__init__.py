@@ -5,6 +5,8 @@
 #
 
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from importlib import import_module
 from typing import Optional, Tuple  # noqa: F401

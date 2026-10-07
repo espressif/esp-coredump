@@ -84,7 +84,7 @@ version_files = [
     disallow_incomplete_defs = false # Disallows defining functions with incomplete type annotations
     disallow_untyped_defs    = false # Disallows defining functions without type annotations or with incomplete type annotations
     ignore_missing_imports   = true  # Suppress error messages about imports that cannot be resolved
-    python_version           = "3.9" # Specifies the Python version used to parse and check the target program
+    python_version           = "3.7" # Specifies the Python version used to parse and check the target program
     warn_no_return           = true  # Shows errors for missing return statements on some execution paths
     warn_return_any          = true  # Shows a warning when returning a value with type Any from a function declared with a non- Any return type
 
