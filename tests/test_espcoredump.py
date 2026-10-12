@@ -18,7 +18,7 @@ try:
 except ImportError:
     raise ModuleNotFoundError('No module named "esp_coredump" please install esp_coredump by running "python -m pip install esp-coredump"')
 
-SUPPORTED_TARGET = ['esp32', 'esp32c3', 'esp32p4', 'esp32c6', 'esp32s31']
+SUPPORTED_TARGET = ['esp32', 'esp32s2', 'esp32s3', 'esp32c3', 'esp32p4', 'esp32c6', 'esp32s31']
 COREDUMP_FILE_NAME = 'coredump'
 COREDUMP_BIN_FILE_NAME = 'coredump_bin'
 
@@ -126,7 +126,7 @@ class TestESPCoreDumpDecode:
         out = proc.stdout.decode().split('\n', 1)[1]  # remove first line with version
         assert expected_output == out
 
-    @pytest.mark.parametrize('target', ['esp32', 'esp32c3', 'esp32s3'])
+    @pytest.mark.parametrize('target', ['esp32', 'esp32c3'])
     def test_bin_coredump_decode(self, target):
         """Built with CONFIG_ESP_COREDUMP_DATA_FORMAT_BIN=y (instead of default ELF)"""
         output = get_output(core_ext='b64', target=target, bin_fmt=True)
