@@ -46,7 +46,7 @@ def common_options(func):
         click.option(
             '--save-core',
             '-s',
-            help='Save core to file. Otherwise temporary core file will be deleted. Does not work with "-c"',
+            help='Save core to file. Otherwise temporary core file will be deleted. Ignored when "-c" is an ELF file',
         ),
         click.option('--rom-elf', '-r', help='Path to ROM ELF file. Will use "<target>_rom.elf" if not specified'),
         click.argument('prog'),
