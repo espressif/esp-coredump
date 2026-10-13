@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: CC0-1.0
  */
 #include <stdlib.h>
+#include "esp_attr.h"
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -28,6 +29,37 @@ void create_task_use_cap(const char *task_name, uint32_t stack_caps)
 }
 #endif
 
+#if CONFIG_TEST_PRINT_VARS
+typedef struct {
+    uint32_t mv;
+    uint32_t busy : 1;
+} batt_t;
+
+/* Tagged variables for --print-all-vars */
+COREDUMP_DRAM_ATTR batt_t g_batt;
+static COREDUMP_DRAM_ATTR uint32_t s_dram_static;
+#if CONFIG_SOC_RTC_FAST_MEM_SUPPORTED || CONFIG_SOC_RTC_SLOW_MEM_SUPPORTED
+COREDUMP_RTC_DATA_ATTR uint32_t g_rtc_var;
+#endif
+COREDUMP_NOINIT_ATTR uint32_t g_noinit_var;
+
+static void set_tagged_vars(void)
+{
+    static COREDUMP_DRAM_ATTR __attribute__((used)) uint32_t s_func_static;
+
+    s_func_static = 0x11110004;
+    g_batt.mv = 3712;
+    g_batt.busy = 1;
+    s_dram_static = 0x11110001;
+#if CONFIG_SOC_RTC_FAST_MEM_SUPPORTED || CONFIG_SOC_RTC_SLOW_MEM_SUPPORTED
+    g_rtc_var = 0x11110002;
+#endif
+    g_noinit_var = 0x11110003;
+}
+
+void set_cpp_tagged_vars(void);
+#endif
+
 void fail_once(char unused)
 {
     static int first = 1;
@@ -39,6 +71,11 @@ void fail_once(char unused)
 
 void app_main(void)
 {
+#if CONFIG_TEST_PRINT_VARS
+    set_tagged_vars();
+    set_cpp_tagged_vars();
+#endif
+
 #if CONFIG_ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP == 1
     create_task_use_cap("rtc_fast", MALLOC_CAP_8BIT | MALLOC_CAP_RTCRAM);
 #endif

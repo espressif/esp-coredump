@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -39,6 +40,7 @@ from .corefile.elf import (
     TASK_STATUS_CORRECT,
     ElfFile,
     ElfSegment,
+    ElfSymbol,
     ESPCoreDumpElfFile,
     EspTaskStatus,
 )
@@ -60,6 +62,17 @@ RETRY_ATTEMPTS = 3
 
 XTENSA_ISR_CTX_IDX = 37
 RISCV_ISR_CTX_IDX = 1
+
+PRINT_VAR_FORMATS = 'xduotacfsz'
+NOT_IN_CORE_DUMP = '<not in core dump>'
+NOT_IN_CORE_DUMP_HINT = 'Some values are not in the core dump. Tag them with COREDUMP_DRAM_ATTR or enable CONFIG_ESP_COREDUMP_CAPTURE_DRAM.'
+# IDF places these sections in flash
+FLASH_SECTION_PREFIXES = ('.flash.', '.eh_frame')
+CANNOT_ACCESS_RE = re.compile(r'^Cannot access memory at address (0x[0-9a-fA-F]+)')
+VALUE_CANNOT_ACCESS_RE = re.compile(r'<error: Cannot access memory at address (0x[0-9a-fA-F]+)>')
+# COREDUMP_*_ATTR variables are placed between these linker symbols
+TAGGED_REGION_RE = re.compile(r'_coredump_(\w+)_(start|end)$')
+C_IDENTIFIER_RE = re.compile(r'[A-Za-z_]\w*$')
 
 if os.name == 'nt':
     CLOSE_FDS = False
@@ -85,6 +98,8 @@ class CoreDump:
         print_mem: str | None = None,
         rom_elf: str | None = None,
         save_core: str | None = None,
+        print_vars: list[str] | None = None,
+        print_all_vars: bool = False,
     ):
         if prog is None:
             raise ValueError("Path to program's ELF binary is not provided")
@@ -102,6 +117,8 @@ class CoreDump:
         self.prog = prog
         self.port = port
         self.print_mem = print_mem
+        self.print_vars = print_vars
+        self.print_all_vars = print_all_vars
         self.rom_elf = rom_elf
         self.save_core = save_core
 
@@ -340,7 +357,7 @@ class CoreDump:
         print(self.gdb_esp.run_cmd('info threads'))
         # THREADS STACKS
         for attempt in range(1, RETRY_ATTEMPTS + 1):
-            threads, _ = self.gdb_esp.get_thread_info(attempt * DEFAULT_GDB_TIMEOUT_SEC)
+            threads, current_thread_id = self.gdb_esp.get_thread_info(attempt * DEFAULT_GDB_TIMEOUT_SEC)
             if threads:
                 break
 
@@ -400,6 +417,103 @@ class CoreDump:
                     f'{task_info[task_index].task_stack_start:x}).'
                 )
 
+        if current_thread_id:
+            self.gdb_esp.switch_thread(current_thread_id)
+
+    @staticmethod
+    def parse_print_var(line):  # type: (str) -> Tuple[Optional[str], str]
+        """Split '[/fmt] EXPR' into (fmt, expr). Raise ValueError if the line is not valid."""
+        if '\n' in line or '\r' in line:
+            raise ValueError('Line breaks are not allowed')
+        fmt = None
+        expr = line.strip()
+        if expr.startswith('/'):
+            fmt, _, expr = expr[1:].partition(' ')
+            if len(fmt) != 1 or fmt not in PRINT_VAR_FORMATS:
+                raise ValueError(f'Unknown format "/{fmt}". Use one of: {" ".join(PRINT_VAR_FORMATS)}')
+            expr = expr.strip()
+        if not expr:
+            raise ValueError('Empty expression')
+        return fmt, expr
+
+    def _in_flash(self, addr):  # type: (int) -> bool
+        return any(s.name.startswith(FLASH_SECTION_PREFIXES) and s.addr <= addr < s.addr + len(s.data) for s in self.exe_elf.sections)
+
+    def _print_var_result(self, value, error):  # type: (Optional[str], Optional[str]) -> Tuple[str, Optional[int]]
+        """Return the text to print and the address that could not be read, if any"""
+        unread = CANNOT_ACCESS_RE.search(error) if error else VALUE_CANNOT_ACCESS_RE.search(value or '')
+        if unread:
+            return NOT_IN_CORE_DUMP, int(unread.group(1), 16)
+        return (f'<error: {error}>' if error else value or ''), None
+
+    def get_tagged_regions(self):  # type: () -> list[Tuple[str, int, int]]
+        """Return (name, start, end) of each non-empty COREDUMP_*_ATTR region, sorted by address"""
+        bounds = {}  # type: dict[str, dict[str, int]]
+        for sym in self.exe_elf.symbols:
+            match = TAGGED_REGION_RE.match(sym.name)
+            if match:
+                bounds.setdefault(match.group(1), {})[match.group(2)] = sym.value
+        regions = [(name, b['start'], b['end']) for name, b in bounds.items() if b.get('start', 0) < b.get('end', 0)]
+        return sorted(regions, key=lambda r: r[1])
+
+    def get_tagged_vars(self):  # type: () -> list[Tuple[str, str]]
+        """Return (label, "/x EXPR") for the variables in COREDUMP_*_ATTR regions, sorted by address"""
+        regions = self.get_tagged_regions()
+        symbols = [
+            sym for sym in self.exe_elf.symbols if sym.type == ElfSymbol.STT_OBJECT and sym.size and any(start <= sym.value < end for _, start, end in regions)
+        ]
+        tagged_vars = []
+        for sym in sorted(symbols, key=lambda sym: sym.value):
+            if C_IDENTIFIER_RE.match(sym.name) and not sym.name.startswith('_ZZ'):
+                # A file name keeps GDB from picking a static with the same name in another file
+                name = f"'{sym.file}'::{sym.name}" if sym.file else sym.name
+                tagged_vars.append((name, f'/x {name}'))
+            else:
+                # GDB cannot name statics inside a function (s.1 in C, _ZZ... in C++), so read the bytes at the address
+                ctype = {1: 'unsigned char', 2: 'unsigned short', 4: 'unsigned int'}.get(sym.size)
+                expr = f'*({ctype} *){sym.value:#x}' if ctype else f'*(unsigned char (*)[{sym.size}]){sym.value:#x}'
+                tagged_vars.append((sym.name, f'/x {expr}'))
+        return tagged_vars
+
+    def print_user_vars(self, print_vars):  # type: (list[Tuple[str, str]]) -> None
+        """Print each (label, '[/fmt] EXPR') pair as a 'label = value' line"""
+        results = {}
+        retry = []
+        # Without the program ELF GDB reads only the core, so missing memory gives an error
+        arch = self.gdb_esp.get_architecture()
+        unloaded = False
+        if arch:
+            self.gdb_esp.run_cmd(f'set architecture {arch}')
+            unloaded = self.gdb_esp.set_exec_file() is None
+        if not unloaded:
+            log.warn('Cannot unload the program ELF in GDB. Values below are not checked against the core dump.')
+        try:
+            for i, (_, line) in enumerate(print_vars):
+                try:
+                    fmt, expr = self.parse_print_var(line)
+                except ValueError as e:
+                    results[i] = f'<error: {e}>'
+                    continue
+                results[i], unread = self._print_var_result(*self.gdb_esp.evaluate(expr, fmt))
+                # Flash content does not change at run time so the ELF value is correct
+                if unread is not None and self._in_flash(unread):
+                    retry.append((i, fmt, expr))
+        finally:
+            if unloaded:
+                error = self.gdb_esp.set_exec_file(self.prog)
+                if error:
+                    log.warn(f'Cannot reload the program ELF in GDB. {error}')
+            if arch:
+                self.gdb_esp.run_cmd('set architecture auto')
+
+        for i, fmt, expr in retry:
+            results[i], _ = self._print_var_result(*self.gdb_esp.evaluate(expr, fmt))
+
+        for i, (label, _) in enumerate(print_vars):
+            print(f'{label} = {results[i]}')
+        if NOT_IN_CORE_DUMP in results.values():
+            log.warn(NOT_IN_CORE_DUMP_HINT)
+
     def print_current_thread_registers(self, extra_note, extra_info):
         # type: (Optional[Container], Optional[ListContainer]) -> None
         if self.exe_elf.e_machine == ESPCoreDumpElfFile.EM_XTENSA:
@@ -437,6 +551,14 @@ class CoreDump:
     def print_all_memory_regions(self):  # type: () -> None
         print('Name   Address   Size   Attrs')
         core_segs = self.core_elf.load_segments
+        tagged_segs = []
+        for region, start, end in self.get_tagged_regions():
+            # The writer rounds segment sizes up to 4 bytes
+            end = start + ((end - start + 3) & ~3)
+            for seg in core_segs:
+                seg_end = seg.addr + len(seg.data)
+                if seg.addr < end and start < seg_end:
+                    tagged_segs.append((region, max(start, seg.addr), min(end, seg_end) - max(start, seg.addr), seg, start <= seg.addr and seg_end <= end))
         merged_segs = []
         for sec in self.exe_elf.sections:
             merged = False
@@ -481,9 +603,14 @@ class CoreDump:
 
         for ms in merged_segs:
             print(f'{ms[0]} 0x{ms[1]:x} 0x{ms[2]:x} {ms[3]}')
+        for region, addr, size, seg, _ in tagged_segs:
+            print(f'.coredump.{region} 0x{addr:x} 0x{size:x} {seg.attr_str()}')
 
         trace_regions = self._riscv_trace_regions()
         for cs in core_segs:
+            # A segment that holds only a tagged region is printed above
+            if any(cs is seg and inside for _, _, _, seg, inside in tagged_segs):
+                continue
             name = trace_regions.get(cs.addr)
             if name is not None:
                 print(f'{name} 0x{cs.addr:x} 0x{len(cs.data):x} {cs.attr_str()}')
@@ -636,6 +763,13 @@ class CoreDump:
         self.print_current_thread_stack(task_info)
         print('\n======================== THREADS INFO =========================')
         self.print_threads_info(task_info)
+        user_vars = self.get_tagged_vars() if self.print_all_vars else []
+        if self.print_all_vars and not user_vars:
+            log.warn('No variables with a COREDUMP_*_ATTR attribute found.')
+        user_vars += [(line, line) for line in self.print_vars or []]
+        if user_vars:
+            print('\n\n======================= USER VARIABLES ========================')
+            self.print_user_vars(user_vars)
         print('\n\n======================= ALL MEMORY REGIONS ========================')
         self.print_all_memory_regions()
 

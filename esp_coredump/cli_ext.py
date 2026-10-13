@@ -128,9 +128,22 @@ def dbg_corefile(ctx, **opts):
 @cli.command('info_corefile')
 @common_options
 @click.option('--print-mem', '-m', is_flag=True, default=False, help='Print memory dump')
+@click.option(
+    '--print-var',
+    'print_vars',
+    multiple=True,
+    help='Print a variable or expression as "[/fmt] EXPR", for example "/x g_state.flags". Can be repeated.',
+)
+@click.option(
+    '--print-all-vars',
+    is_flag=True,
+    default=False,
+    help='Print all variables tagged with a COREDUMP_*_ATTR attribute',
+)
 @click.pass_context
 def info_corefile(ctx, **opts):
     """Print core dump info from file"""
+    opts['print_vars'] = list(opts['print_vars']) or None
     _run(ctx, 'info_corefile', **opts)
 
 
