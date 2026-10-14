@@ -191,8 +191,11 @@ XT_STK_FRMSZ = 25
 
 
 class XtensaMethodsMixin(BaseArchMethodsMixin):
-    @staticmethod
-    def get_registers_from_stack(data, grows_down):
+    # Without the loop option the exception frame has no LBEG/LEND/LCOUNT fields.
+    HAVE_LOOPS = True
+
+    @classmethod
+    def get_registers_from_stack(cls, data, grows_down):
         # type: (bytes, bool) -> Tuple[list[int], Optional[dict[int, int]]]
         extra_regs = {v: 0 for v in ExceptionRegisters().registers.values()}
         regs = [0] * REG_NUM
@@ -212,9 +215,10 @@ class XtensaMethodsMixin(BaseArchMethodsMixin):
             for i in range(XT_STK_AR_NUM):
                 regs[REG_AR_START_IDX + i] = stack[XT_STK_AR_START + i]
             regs[REG_SAR_IDX] = stack[XT_STK_SAR]
-            regs[REG_LB_IDX] = stack[XT_STK_LBEG]
-            regs[REG_LE_IDX] = stack[XT_STK_LEND]
-            regs[REG_LC_IDX] = stack[XT_STK_LCOUNT]
+            if cls.HAVE_LOOPS:
+                regs[REG_LB_IDX] = stack[XT_STK_LBEG]
+                regs[REG_LE_IDX] = stack[XT_STK_LEND]
+                regs[REG_LC_IDX] = stack[XT_STK_LCOUNT]
             # FIXME: crashed and some running tasks (e.g. prvIdleTask) have EXCM bit set
             # and GDB can not unwind callstack properly (it implies not windowed call0)
             if regs[REG_PS_IDX] & (1 << 5):
@@ -261,6 +265,7 @@ class Esp32Methods(BaseTargetMethods, XtensaMethodsMixin):
 
 class Esp32S2Methods(BaseTargetMethods, XtensaMethodsMixin):
     TARGET = 'esp32s2'
+    HAVE_LOOPS = False
 
 
 class Esp32S3Methods(BaseTargetMethods, XtensaMethodsMixin):

@@ -253,9 +253,7 @@ class CoreDump:
             return self.gdb  # type: ignore
 
         if target in XTENSA_TARGETS:
-            # For some reason, xtensa-esp32s2-elf-gdb will report some issue.
-            # Use xtensa-esp32-elf-gdb instead.
-            gdb_path = 'xtensa-esp32-elf-gdb'
+            gdb_path = f'xtensa-{target}-elf-gdb'
         elif target in RISCV_TARGETS:
             gdb_path = 'riscv32-esp-elf-gdb'
         else:

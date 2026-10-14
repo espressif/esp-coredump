@@ -57,8 +57,8 @@ PrStruct = Struct(
 
 
 class RiscvMethodsMixin(BaseArchMethodsMixin):
-    @staticmethod
-    def get_registers_from_stack(data, grows_down):
+    @classmethod
+    def get_registers_from_stack(cls, data, grows_down):
         # type: (bytes, bool) -> Tuple[list[int], Optional[dict[int, int]]]
         regs = Int32ul[RISCV_GP_REGS_COUNT].parse(data)
         if not grows_down:

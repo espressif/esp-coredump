@@ -1,0 +1,250 @@
+===============================================================
+==================== ESP32 CORE DUMP START ====================
+
+Crashed task handle: 0x3ffc22e0, name: 'main', GDB name: 'process 1073488608'
+Crashed task is not in the interrupt context
+Panic reason: abort() was called at PC 0x400890ad on core 0
+
+================== CURRENT THREAD REGISTERS ===================
+exccause       0x0 (IllegalInstructionCause)
+excvaddr       0x0
+epc1           0x40028673
+epc2           0x0
+epc3           0x0
+epc4           0x0
+epc5           0x0
+epc6           0x0
+eps2           0x0
+eps3           0x0
+eps4           0x0
+eps5           0x0
+eps6           0x0
+pc             0x40029a74          0x40029a74 <panic_abort+16>
+sar            0x11                17
+ps             0x60320             394016
+threadptr      <unavailable>
+pwrctl         <unavailable>
+pwrstat        <unavailable>
+eristat        <unavailable>
+cs_itctrl      <unavailable>
+cs_claimset    <unavailable>
+cs_claimclr    <unavailable>
+cs_lockaccess  <unavailable>
+cs_lockstatus  <unavailable>
+cs_authstatus  <unavailable>
+fault_info     <unavailable>
+trax_id        <unavailable>
+trax_control   <unavailable>
+trax_status    <unavailable>
+trax_data      <unavailable>
+trax_address   <unavailable>
+trax_pctrigger <unavailable>
+trax_pcmatch   <unavailable>
+trax_delay     <unavailable>
+trax_memstart  <unavailable>
+trax_memend    <unavailable>
+pmg            <unavailable>
+pmpc           <unavailable>
+pm0            <unavailable>
+pm1            <unavailable>
+pmctrl0        <unavailable>
+pmctrl1        <unavailable>
+pmstat0        <unavailable>
+pmstat1        <unavailable>
+ocdid          <unavailable>
+ocd_dcrclr     <unavailable>
+ocd_dcrset     <unavailable>
+ocd_dsr        <unavailable>
+a0             0x80029a48          -2147313080
+a1             0x3ffc20a0          1073488032
+a2             0x3ffc20eb          1073488107
+a3             0x3ffc20e9          1073488105
+a4             0xa                 10
+a5             0x3ffbefc0          1073475520
+a6             0x60023             393251
+a7             0x1                 1
+a8             0x3ffbf8a0          1073477792
+a9             0x1                 1
+a10            0x3ffc20e9          1073488105
+a11            0x3ffc20e9          1073488105
+a12            0xa                 10
+a13            0xa2                162
+a14            0x3f002350          1056973648
+a15            0x0                 0
+
+==================== CURRENT THREAD STACK =====================
+#0  panic_abort (details=0x3ffc20eb "abort() was called at PC 0x400890ad on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:506
+#1  0x40029a48 in esp_system_abort (details=0x3ffc20eb "abort() was called at PC 0x400890ad on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:87
+#2  0x400297a8 in abort () at /builds/espressif/esp-idf/components/esp_libc/src/abort.c:38
+#3  0x400890b0 in fail_once (unused=97 'a') at /Users/erhan/dev/esp-coredump/tests/test_apps/main/test_core_dump.c:36
+#4  0x4000f994 in ets_write_char ()
+#5  0x4000fdec in ets_vprintf ()
+#6  0x4000ff24 in ets_printf ()
+#7  0x4008910a in app_main () at /Users/erhan/dev/esp-coredump/tests/test_apps/main/test_core_dump.c:51
+#8  0x40084f67 in main_task (args=0x0) at /builds/espressif/esp-idf/components/freertos/app_startup.c:154
+#9  0x4008f114 in vPortTaskWrapper (pxCode=0x40084f34 <main_task>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:153
+
+======================== THREADS INFO =========================
+  Id   Target Id          Frame 
+* 1    process 1073488608 panic_abort (details=0x3ffc20eb "abort() was called at PC 0x400890ad on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:506
+  2    process 1073490248 vPortTaskWrapper (pxCode=0x0, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:152
+  3    process 1073726468 0x4001a8d4 in _xtos_set_intlevel ()
+
+
+       TCB             NAME PRIO C/B  STACK USED/FREE
+---------- ---------------- -------- ----------------
+0x3ffc22e0             main      1/1         464/3620
+0x3ffc2948             IDLE      0/0         160/1372
+0x3fffc404         rtc_fast    15/15         320/3760
+
+==================== THREAD 1 (TCB: 0x3ffc22e0, name: 'main') =====================
+#0  panic_abort (details=0x3ffc20eb "abort() was called at PC 0x400890ad on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:506
+#1  0x40029a48 in esp_system_abort (details=0x3ffc20eb "abort() was called at PC 0x400890ad on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:87
+#2  0x400297a8 in abort () at /builds/espressif/esp-idf/components/esp_libc/src/abort.c:38
+#3  0x400890b0 in fail_once (unused=97 'a') at /Users/erhan/dev/esp-coredump/tests/test_apps/main/test_core_dump.c:36
+#4  0x4000f994 in ets_write_char ()
+#5  0x4000fdec in ets_vprintf ()
+#6  0x4000ff24 in ets_printf ()
+#7  0x4008910a in app_main () at /Users/erhan/dev/esp-coredump/tests/test_apps/main/test_core_dump.c:51
+#8  0x40084f67 in main_task (args=0x0) at /builds/espressif/esp-idf/components/freertos/app_startup.c:154
+#9  0x4008f114 in vPortTaskWrapper (pxCode=0x40084f34 <main_task>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:153
+
+==================== THREAD 2 (TCB: 0x3ffc2948, name: 'IDLE') =====================
+#0  vPortTaskWrapper (pxCode=0x0, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:152
+#1  0x40000000 in ?? ()
+
+==================== THREAD 3 (TCB: 0x3fffc404, name: 'rtc_fast') =====================
+#0  0x4001a8d4 in _xtos_set_intlevel ()
+#1  0x40029cd2 in vPortClearInterruptMaskFromISR (prev_level=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/include/freertos/portmacro.h:565
+#2  vPortExitCritical (mux=0x3ffbdf30 <xKernelLock>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:562
+#3  0x400904b7 in xTaskGenericNotifyWait (uxIndexToWait=0, ulBitsToClearOnEntry=<optimized out>, ulBitsToClearOnExit=4294967295, pulNotificationValue=0x3ff9f110, xTicksToWait=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/tasks.c:5861
+#4  0x40089093 in test_task (arg=0x0) at /Users/erhan/dev/esp-coredump/tests/test_apps/main/test_core_dump.c:19
+#5  0x4008f114 in vPortTaskWrapper (pxCode=0x40089080 <test_task>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:153
+
+
+======================= ALL MEMORY REGIONS ========================
+Name   Address   Size   Attrs
+.rtc.text 0x40070000 0x0 RW  
+.rtc.dummy 0x3ff9e000 0x0 RW  
+.rtc.force_fast 0x3ff9e000 0x0 RW  
+.rtc_noinit 0x50000000 0x0 RW  
+.rtc.force_slow 0x50000000 0x24 RW A
+.iram0.vectors 0x40024000 0x404 R XA
+.iram0.text 0x40024404 0x99cc R XA
+.dram0.data 0x3ffbddd0 0x19e0 RW A
+.flash.appdesc 0x3f000020 0x100 R  A
+.flash.rodata 0x3f000120 0x761c RW A
+.flash.tdata 0x3f00773c 0x10 RW A
+.flash.text 0x40080020 0x10de2 R XA
+.iram0.text_end 0x4002ddd0 0x0 RW  
+.dram0.heap_start 0x3ffc0490 0x0 RW  
+.coredump.tasks.data 0x3ffc22e0 0x60 RW 
+.coredump.tasks.data 0x3ffc2010 0x2c0 RW 
+.coredump.tasks.data 0x3ffc2948 0x60 RW 
+.coredump.tasks.data 0x3ffc28a0 0xa0 RW 
+.coredump.tasks.data 0x3fffc404 0x60 RW 
+.coredump.tasks.data 0x3ff9f030 0x140 RW 
+
+====================== CORE DUMP MEMORY CONTENTS ========================
+.coredump.tasks.data 0x3ffc22e0 0x60 RW 
+0x3ffc22e0:	0x3ffc2100	0x00000000	0x3ffbfaac	0x3ffbfaac
+0x3ffc22f0:	0x3ffc22e0	0x3ffbfaa4	0x00000018	0x00000000
+0x3ffc2300:	0x00000000	0x3ffc22e0	0x00000000	0x00000001
+0x3ffc2310:	0x3ffc12dc	0x6e69616d	0x00000000	0x00000000
+0x3ffc2320:	0x00000000	0x3ffc22d0	0x00000001	0x00000000
+0x3ffc2330:	0x00000000	0x00000000	0x00000000	0x00000000
+.coredump.tasks.data 0x3ffc2010 0x2c0 RW 
+0x3ffc2010:	0xdeadbeef	0x40029a74	0x00060330	0x80029a48
+0x3ffc2020:	0x3ffc20a0	0x3ffc20eb	0x3ffc20e9	0x0000000a
+0x3ffc2030:	0x3ffbefc0	0x00060023	0x00000001	0x3ffbf8a0
+0x3ffc2040:	0x00000001	0x3ffc20e9	0x3ffc20e9	0x0000000a
+0x3ffc2050:	0x000000a2	0x3f002350	0x00000000	0x00000011
+0x3ffc2060:	0x00000000	0x00000000	0x0000000a	0x000000a2
+0x3ffc2070:	0x40026114	0x3ffc22b8	0x00000000	0x00000034
+0x3ffc2080:	0x800874a0	0x3ffc20c0	0x00000000	0x00000000
+0x3ffc2090:	0x800297a8	0x3ffc20c0	0x3ffc20eb	0x3ffc20eb
+0x3ffc20a0:	0x00000000	0x3ffc2150	0x2cb63574	0x3fffc2ac
+0x3ffc20b0:	0x800890b0	0x3ffc20e0	0x00000000	0x00000000
+0x3ffc20c0:	0x0000000a	0x3ffc211c	0x3ffc211c	0x00000003
+0x3ffc20d0:	0x8000f994	0x3ffc2150	0x00000061	0x3ffbfbc4
+0x3ffc20e0:	0x38303034	0x64613039	0x61003000	0x74726f62
+0x3ffc20f0:	0x77202928	0x63207361	0x656c6c61	0x74612064
+0x3ffc2100:	0x20435020	0x30347830	0x30393830	0x6f206461
+0x3ffc2110:	0x6f63206e	0x30206572	0x00000000	0x00060c00
+0x3ffc2120:	0x3ffbf2e4	0x3ffc20e0	0x3ffbf300	0x3ffc20e9
+0x3ffc2130:	0x00060c20	0x3ff9f160	0x3ff9f160	0x00000004
+0x3ffc2140:	0x8000fdec	0x3ffc2170	0x00000061	0x3f004b28
+0x3ffc2150:	0x3ff9f160	0x40089080	0x3ff9f158	0x3ff9f0d0
+0x3ffc2160:	0x8000ff24	0x3ffc2190	0x00000000	0x3f004b35
+0x3ffc2170:	0x3ff9f170	0x00000000	0x0000000a	0x3fffc404
+0x3ffc2180:	0x8008910a	0x3ffc2210	0x3f004b34	0x4008909c
+0x3ffc2190:	0x8009066d	0x3ffc21c0	0x3fffc404	0x3f004b28
+0x3ffc21a0:	0x3ff9f160	0x40089080	0x3ff9f158	0x3ff9f0d0
+0x3ffc21b0:	0x3ffc2240	0x3ffc2220	0x00000004	0x00000000
+0x3ffc21c0:	0x00000000	0x4000f974	0x00000000	0x3fffc404
+0x3ffc21d0:	0x800890f8	0x3ffc2220	0x3ffc2240	0x3fffc404
+0x3ffc21e0:	0x3fffc404	0x00000000	0x00000000	0x00000060
+0x3ffc21f0:	0x3ffc2190	0x00000000	0x00000004	0x3ff9e180
+0x3ffc2200:	0x80084f67	0x3ffc2260	0x00000003	0x3f002350
+0x3ffc2210:	0x3ffc2240	0x3ffc2220	0x00000004	0x3ff9e180
+0x3ffc2220:	0x80084f67	0x4008909c	0x3ffc2240	0x0000000c
+0x3ffc2230:	0x00060523	0x00008004	0x00060523	0x00000000
+0x3ffc2240:	0x3ffc2240	0x0000000c	0x00060523	0x00008004
+0x3ffc2250:	0x8008f114	0x3ffc2280	0x00000000	0x00000000
+0x3ffc2260:	0x3f00237c	0x000000a2	0x3f002350	0x00000000
+0x3ffc2270:	0x00000000	0x3ffc22a0	0x40084f34	0x00000000
+0x3ffc2280:	0x80029d4d	0x3fffe220	0x01a48cdd	0x3f002350
+0x3ffc2290:	0x00000000	0x3ffc22c0	0x00000000	0x00000000
+0x3ffc22a0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ffc22b0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ffc22c0:	0x00000000	0x3ffbdfe0	0x3ffbdf94	0x3ffbdf48
+.coredump.tasks.data 0x3ffc2948 0x60 RW 
+0x3ffc2948:	0x3ffc28a0	0x00000000	0x3ffbfa98	0x3ffbfa98
+0x3ffc2958:	0x3ffc2948	0x3ffbfa90	0x00000019	0x00000000
+0x3ffc2968:	0x00000000	0x3ffc2948	0x00000000	0x00000000
+0x3ffc2978:	0x3ffc2344	0x454c4449	0x00000000	0x00000000
+0x3ffc2988:	0x00000000	0x3ffc2940	0x00000000	0x00000000
+0x3ffc2998:	0x00000000	0x00000000	0x00000000	0x00000200
+.coredump.tasks.data 0x3ffc28a0 0xa0 RW 
+0x3ffc28a0:	0x4002616c	0x4008f10c	0x00050030	0x00000000
+0x3ffc28b0:	0x3ffc2930	0x00000000	0x00000000	0x00000000
+0x3ffc28c0:	0x00000000	0x4008fac8	0x00000000	0x00000000
+0x3ffc28d0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ffc28e0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ffc28f0:	0x0000ffff	0x00000000	0x00000000	0x00000000
+0x3ffc2900:	0x00000000	0x3ffc2928	0x00000000	0x00000000
+0x3ffc2910:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ffc2920:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ffc2930:	0x00000000	0x3ffbdfe0	0x3ffbdf94	0x3ffbdf48
+.coredump.tasks.data 0x3fffc404 0x60 RW 
+0x3fffc404:	0x3ff9f030	0x00000000	0x3ffbfa28	0x3ffbfa28
+0x3fffc414:	0x3fffc404	0x3ffbfa20	0x0000000a	0x00000000
+0x3fffc424:	0x00000000	0x3fffc404	0x00000000	0x0000000f
+0x3fffc434:	0x3ff9e180	0x5f637472	0x74736166	0x00000000
+0x3fffc444:	0x00000000	0x3ff9f170	0x0000000f	0x00000000
+0x3fffc454:	0x00000000	0x00000000	0x00000000	0x00000201
+.coredump.tasks.data 0x3ff9f030 0x140 RW 
+0x3ff9f030:	0x4002616c	0x4001a8d4	0x00060030	0x80029cd2
+0x3ff9f040:	0x3ff9f0c0	0x00060023	0x00000000	0x00060020
+0x3ff9f050:	0x3ffc21e0	0x40089080	0x3f004b28	0x3f4c0058
+0x3ff9f060:	0x00000001	0x3ffbe4e8	0xffffffff	0x3ffc21e0
+0x3ff9f070:	0x3ffc21c0	0x3fffc404	0x3f004b28	0x00000011
+0x3ff9f080:	0x0000ffff	0x00000000	0x400261d9	0x3ffc21c0
+0x3ff9f090:	0x40029d92	0x3ff9f158	0xa5a5a5a5	0xa5a5a5a5
+0x3ff9f0a0:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x3ff9f0b0:	0x800904b7	0x3ff9f0d0	0x3ffbdf30	0x00000001
+0x3ff9f0c0:	0x80089093	0x3ff9f0f0	0x00000000	0x00000000
+0x3ff9f0d0:	0x3ffc2260	0x3ffc2230	0x3f004b28	0x00000000
+0x3ff9f0e0:	0x8008f114	0x3ff9f110	0x00000000	0x00000000
+0x3ff9f0f0:	0xffffffff	0x3ff9f110	0x3ffbdf30	0xfffffffd
+0x3ff9f100:	0x00000000	0x3ff9f140	0x40089080	0x00000000
+0x3ff9f110:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ff9f120:	0x00000001	0x3ffbfc94	0x00060c23	0x00001000
+0x3ff9f130:	0x00000000	0x3ff9f160	0x00000000	0x00000000
+0x3ff9f140:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ff9f150:	0x00000000	0x00000000	0x00000000	0x00000000
+0x3ff9f160:	0x00000000	0x3ffbdfe0	0x3ffbdf94	0x3ffbdf48
+
+===================== ESP32 CORE DUMP END =====================
+===============================================================
+Done!
