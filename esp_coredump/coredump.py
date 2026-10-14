@@ -361,12 +361,12 @@ class CoreDump:
         # THREADS STACKS
         for attempt in range(1, RETRY_ATTEMPTS + 1):
             threads, current_thread_id = self.gdb_esp.get_thread_info(attempt * DEFAULT_GDB_TIMEOUT_SEC)
-            if threads:
+            if threads is not None:
                 break
 
             print('Retrying reading threads information...')
 
-        if not threads:
+        if threads is None:
             print(
                 '\nThe threads information for the current task could not be '
                 'retrieved. Please try running this command again with '
@@ -374,6 +374,9 @@ class CoreDump:
                 'the default value of internal delay for gdb responses '
                 f'(Default: {DEFAULT_GDB_TIMEOUT_SEC})'
             )
+            return
+        if not threads:
+            # GDB has already printed "No threads." for "info threads"
             return
 
         print('\n')

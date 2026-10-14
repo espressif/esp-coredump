@@ -170,14 +170,12 @@ class EspGDB:
         return error
 
     def get_thread_info(self, response_delay_sec=DEFAULT_GDB_TIMEOUT_SEC):
-        """Get information about all threads known to GDB, and the current thread ID"""
+        """Get information about all threads known to GDB, and the current thread ID.
+        Return (None, None) when GDB does not answer, and ([], None) when it has no threads."""
         result, _, error = self._run_mi('-thread-info', response_delay_sec)
         if error or not result:
             return None, None
-
-        current_thread_id = result['current-thread-id']
-        threads = result['threads']
-        return threads, current_thread_id
+        return result.get('threads', []), result.get('current-thread-id')
 
     def switch_thread(self, thr_id):
         """Tell GDB to switch to a specific thread, given its ID"""
