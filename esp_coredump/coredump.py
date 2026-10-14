@@ -28,7 +28,7 @@ except (AttributeError, ModuleNotFoundError):
 
     detect_chip = ESPLoader.detect_chip
 
-from construct import Container, GreedyRange, Int32ul, ListContainer, Struct  # noqa: F401
+from construct import Container, GreedyRange, Int32ul, Int64sl, ListContainer, Struct  # noqa: F401
 from esp_pylib.constants import ESP_ROM_BAUD
 from esp_pylib.rom import get_idf_path, get_rom_elf_dir
 from esp_pylib.rom import get_rom_elf_path as _pylib_get_rom_elf_path
@@ -339,12 +339,15 @@ class CoreDump:
                     task_info.append(task_info_struct)
         return task_info, extra_note
 
-    def get_panic_details(self):
+    def get_note(self, note_type):
         for note_seg in self.core_elf.note_segments:
             for note_sec in note_seg.note_secs:
-                if note_sec.type == ESPCoreDumpElfFile.PT_ESP_PANIC_DETAILS:
+                if note_sec.type == note_type:
                     return note_sec
         return None
+
+    def get_panic_details(self):
+        return self.get_note(ESPCoreDumpElfFile.PT_ESP_PANIC_DETAILS)
 
     def print_crashed_task_info(self, marker):  # type: (Optional[int]) -> None
         if marker == ESPCoreDumpElfFile.CURR_TASK_MARKER:
@@ -755,6 +758,11 @@ class CoreDump:
         panic_details = self.get_panic_details()
         if panic_details:
             print('Panic reason: ' + panic_details.desc.decode('utf-8'))
+
+        uptime = self.get_note(ESPCoreDumpElfFile.PT_ESP_UPTIME)
+        if uptime and len(uptime.desc) == 8:
+            uptime_us = Int64sl.parse(uptime.desc)
+            print(f'Uptime: {uptime_us} us ({uptime_us / 1e6:.3f} s)')
 
         print('\n================== CURRENT THREAD REGISTERS ===================')
         self.print_current_thread_registers(extra_note, extra_info)

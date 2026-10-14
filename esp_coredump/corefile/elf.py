@@ -357,6 +357,7 @@ EspTaskStatus = Struct(
 
 class ESPCoreDumpElfFile(ElfFile):
     PT_ESP_INFO = 8266
+    PT_ESP_UPTIME = 681
     PT_ESP_PANIC_DETAILS = 679
     PT_ESP_TASK_INFO = 678
     PT_ESP_EXTRA_INFO = 677
