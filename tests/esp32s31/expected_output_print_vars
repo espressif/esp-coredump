@@ -1,0 +1,202 @@
+===============================================================
+==================== ESP32 CORE DUMP START ====================
+
+Crashed task handle: 0x2f016e18, name: 'main', GDB name: 'process 788622872'
+Crashed task is not in the interrupt context
+Panic reason: abort() was called at PC 0x4000ea27 on core 0
+Uptime: 51838 us (0.052 s)
+
+================== CURRENT THREAD REGISTERS ===================
+mepc           0x2f007ec6
+mstatus        0x11881
+mtvec          0x2f000003
+mcause         0x2 (Illegal instruction)
+mtval          0x0
+mhartid        0x0
+ra             0x2f007e86	0x2f007e86 <esp_vApplicationTickHook>
+sp             0x2f016c30	0x2f016c30
+gp             0x2f00c008	0x2f00c008 <g_coex_param+16>
+tp             0x2f016de0	0x2f016de0
+t0             0x37363534	926299444
+t1             0x7271706f	1920036975
+t2             0x33323130	858927408
+fp             0x4	0x4
+s1             0x2f016c94	788622484
+a0             0x2f016c5c	788622428
+a1             0x2f016c92	788622482
+a2             0x0	0
+a3             0x0	0
+a4             0x1	1
+a5             0x2f00f000	788590592
+a6             0x2f016c19	788622361
+a7             0x76757473	1987409011
+s2             0x0	0
+s3             0x0	0
+s4             0x2f016ce0	788622560
+s5             0x2f804f74	796938100
+s6             0x2f016ce0	788622560
+s7             0x0	0
+s8             0x0	0
+s9             0x2f016d74	788622708
+s10            0x0	0
+s11            0x0	0
+t3             0x6e6d6c6b	1852664939
+t4             0x6a696867	1785292903
+t5             0x66656463	1717920867
+t6             0x62613938	1650538808
+pc             0x2f007ec6	0x2f007ec6 <panic_abort+18>
+
+==================== CURRENT THREAD STACK =====================
+#0  panic_abort (details=details@entry=0x2f016c5c "abort() was called at PC 0x4000ea27 on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:508
+#1  0x2f007e86 in esp_system_abort (details=details@entry=0x2f016c5c "abort() was called at PC 0x4000ea27 on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:87
+#2  0x2f0076fc in abort () at /builds/espressif/esp-idf/components/esp_libc/src/abort.c:38
+#3  0x4000ea2a in fail_once (unused=<optimized out>) at /tmp/claude-501/-Users-erhan-dev-esp-coredump/5b7ed2e5-d844-4bbc-917e-93d5cbdbe5b3/scratchpad/ta_s31_pv/main/test_core_dump.c:68
+#4  0x2f804f94 in ets_write_char ()
+#5  0x2f80541c in ets_vprintf ()
+#6  0x2f80562a in ets_printf ()
+#7  0x4000eaa6 in app_main () at /tmp/claude-501/-Users-erhan-dev-esp-coredump/5b7ed2e5-d844-4bbc-917e-93d5cbdbe5b3/scratchpad/ta_s31_pv/main/test_core_dump.c:88
+#8  0x40007f8c in main_task (args=<error reading variable: value has been optimized out>) at /builds/espressif/esp-idf/components/freertos/app_startup.c:154
+#9  0x40018cb2 in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:267
+
+======================== THREADS INFO =========================
+  Id   Target Id         Frame 
+* 1    process 788622872 panic_abort (details=details@entry=0x2f016c5c "abort() was called at PC 0x4000ea27 on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:508
+  2    process 788624516 vPortTaskWrapper (pxCode=0x40019af8 <prvIdleTask>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:263
+  3    process 788626160 vPortTaskWrapper (pxCode=0x40019af8 <prvIdleTask>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:263
+  4    process 788593308 vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+  5    process 788599776 vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+  6    process 788594440 vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+  7    process 789034240 vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+
+
+       TCB             NAME PRIO C/B  STACK USED/FREE
+---------- ---------------- -------- ----------------
+0x2f016e18             main      1/1         368/3724
+0x2f017484            IDLE0      0/0         208/1312
+0x2f017af0            IDLE1      0/0         208/1316
+0x2f00fa9c             ipc0    24/24          272/748
+0x2f0113e0        esp_timer    22/22         256/3828
+0x2f00ff08             ipc1    24/24          272/736
+0x2f07b500         rtc_fast    15/15         288/3796
+
+==================== THREAD 1 (TCB: 0x2f016e18, name: 'main') =====================
+#0  panic_abort (details=details@entry=0x2f016c5c "abort() was called at PC 0x4000ea27 on core 0") at /builds/espressif/esp-idf/components/esp_system/panic.c:508
+#1  0x2f007e86 in esp_system_abort (details=details@entry=0x2f016c5c "abort() was called at PC 0x4000ea27 on core 0") at /builds/espressif/esp-idf/components/esp_system/port/esp_system_chip.c:87
+#2  0x2f0076fc in abort () at /builds/espressif/esp-idf/components/esp_libc/src/abort.c:38
+#3  0x4000ea2a in fail_once (unused=<optimized out>) at /tmp/claude-501/-Users-erhan-dev-esp-coredump/5b7ed2e5-d844-4bbc-917e-93d5cbdbe5b3/scratchpad/ta_s31_pv/main/test_core_dump.c:68
+#4  0x2f804f94 in ets_write_char ()
+#5  0x2f80541c in ets_vprintf ()
+#6  0x2f80562a in ets_printf ()
+#7  0x4000eaa6 in app_main () at /tmp/claude-501/-Users-erhan-dev-esp-coredump/5b7ed2e5-d844-4bbc-917e-93d5cbdbe5b3/scratchpad/ta_s31_pv/main/test_core_dump.c:88
+#8  0x40007f8c in main_task (args=<error reading variable: value has been optimized out>) at /builds/espressif/esp-idf/components/freertos/app_startup.c:154
+#9  0x40018cb2 in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:267
+
+==================== THREAD 2 (TCB: 0x2f017484, name: 'IDLE0') =====================
+#0  vPortTaskWrapper (pxCode=0x40019af8 <prvIdleTask>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:263
+#1  0x00000000 in ?? ()
+Backtrace stopped: frame did not save the PC
+
+==================== THREAD 3 (TCB: 0x2f017af0, name: 'IDLE1') =====================
+#0  vPortTaskWrapper (pxCode=0x40019af8 <prvIdleTask>, pvParameters=0x0) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:263
+#1  0x00000000 in ?? ()
+Backtrace stopped: frame did not save the PC
+
+==================== THREAD 4 (TCB: 0x2f00fa9c, name: 'ipc0') =====================
+#0  vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+#1  0x2f00834a in vPortExitCriticalMultiCore (mux=0x2f00b8c0 <xKernelLock>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:595
+#2  0x4001a83e in ulTaskGenericNotifyTake (uxIndexToWait=uxIndexToWait@entry=0, xClearCountOnExit=xClearCountOnExit@entry=1, xTicksToWait=xTicksToWait@entry=4294967295) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/tasks.c:5776
+#3  0x2f000a5c in ipc_task (arg=0x0, arg@entry=<error reading variable: value has been optimized out>) at /builds/espressif/esp-idf/components/esp_system/esp_ipc.c:63
+#4  0x40018cb2 in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:267
+
+==================== THREAD 5 (TCB: 0x2f0113e0, name: 'esp_timer') =====================
+#0  vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+#1  0x2f00834a in vPortExitCriticalMultiCore (mux=0x2f00b8c0 <xKernelLock>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:595
+#2  0x4001a83e in ulTaskGenericNotifyTake (uxIndexToWait=uxIndexToWait@entry=0, xClearCountOnExit=xClearCountOnExit@entry=1, xTicksToWait=xTicksToWait@entry=4294967295) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/tasks.c:5776
+#3  0x400128f2 in timer_task (arg=<error reading variable: value has been optimized out>) at /builds/espressif/esp-idf/components/esp_timer/src/esp_timer.c:549
+#4  0x40018cb2 in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:267
+
+==================== THREAD 6 (TCB: 0x2f00ff08, name: 'ipc1') =====================
+#0  vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+#1  0x2f00834a in vPortExitCriticalMultiCore (mux=0x2f00b8c0 <xKernelLock>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:595
+#2  0x4001a83e in ulTaskGenericNotifyTake (uxIndexToWait=uxIndexToWait@entry=0, xClearCountOnExit=xClearCountOnExit@entry=1, xTicksToWait=xTicksToWait@entry=4294967295) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/tasks.c:5776
+#3  0x2f000a5c in ipc_task (arg=0x1, arg@entry=<error reading variable: value has been optimized out>) at /builds/espressif/esp-idf/components/esp_system/esp_ipc.c:63
+#4  0x40018cb2 in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:267
+
+==================== THREAD 7 (TCB: 0x2f07b500, name: 'rtc_fast') =====================
+#0  vPortClearInterruptMaskFromISR (prev_int_level=31) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:524
+#1  0x2f00834a in vPortExitCriticalMultiCore (mux=0x2f00b8c0 <xKernelLock>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:595
+#2  0x4001a960 in xTaskGenericNotifyWait (uxIndexToWait=uxIndexToWait@entry=0, ulBitsToClearOnEntry=ulBitsToClearOnEntry@entry=0, ulBitsToClearOnExit=ulBitsToClearOnExit@entry=4294967295, pulNotificationValue=pulNotificationValue@entry=0x2e00126c, xTicksToWait=xTicksToWait@entry=4294967295) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/tasks.c:5861
+#3  0x4000ea08 in test_task (arg=<error reading variable: value has been optimized out>) at /tmp/claude-501/-Users-erhan-dev-esp-coredump/5b7ed2e5-d844-4bbc-917e-93d5cbdbe5b3/scratchpad/ta_s31_pv/main/test_core_dump.c:20
+#4  0x40018cb2 in vPortTaskWrapper (pxCode=<optimized out>, pvParameters=<optimized out>) at /builds/espressif/esp-idf/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:267
+
+
+======================= USER VARIABLES ========================
+g_rtc_var = 0x11110002
+g_noinit_var = 0x11110003
+s_func_static.1 = 0x11110004
+'test_core_dump.c'::s_dram_static = 0x11110001
+g_batt = {mv = 0xe80, busy = 0x1}
+_ZZ19set_cpp_tagged_varsE17s_cpp_func_static = 0x22220004
+_ZN9cpp_cfg_t8s_memberE = 0x22220003
+'test_core_dump_cpp.cpp'::_ZL17s_cpp_file_static = 0x22220005
+'test_core_dump_cpp.cpp'::_ZN12_GLOBAL__N_1L14s_cpp_anon_varE = 0x22220002
+_ZN4batt12g_cpp_ns_varE = 0x22220001
+/x $pc = 0x2f007ec6
+'tasks.c'::xTickCount = <not in core dump>
+no_such_symbol = <error: No symbol "no_such_symbol" in current context.>
+esp_isr_names[2] = 0x40025cc0 "USB_SERIAL_JTAG"
+g_batt.mv = 3712
+
+
+======================= ALL MEMORY REGIONS ========================
+Name   Address   Size   Attrs
+.rtc.text 0x2e000000 0x4 RW  
+.rtc.force_fast 0x2e000000 0x0 RW  
+.rtc.data 0x2e000000 0x8 RW A
+.rtc.force_slow 0x2e000008 0x0 RW  
+.iram0.text 0x2f000000 0xb7be R XA
+.iram0.data 0x2f00b800 0x0 RW  
+.iram0.bss 0x2f00b800 0x0 RW  
+.iram0.end 0x2f00b800 0x0 RW  
+.dram0.dummy 0x2f00b800 0x0 RW  
+.dram0.data 0x2f00b800 0x17b8 RW A
+.flash.text 0x40000020 0x1aff6 R XA
+.flash.appdesc 0x40020020 0x100 R  A
+.flash.rodata 0x40020120 0x8968 RW A
+.flash.tdata 0x40028ac0 0x10 RW A
+.coredump.rtc 0x2e000000 0x4 RW 
+.coredump.rtc_noinit 0x2e000004 0x4 RW 
+.coredump.dram 0x2f00c9d0 0x24 RW 
+.coredump.tasks.data 0x2f016e18 0x64 RW 
+.coredump.tasks.data 0x2f016b90 0x280 RW 
+.coredump.tasks.data 0x2f017484 0x64 RW 
+.coredump.tasks.data 0x2f0173a0 0xd0 RW 
+.coredump.tasks.data 0x2f017af0 0x64 RW 
+.coredump.tasks.data 0x2f017a10 0xd0 RW 
+.coredump.tasks.data 0x2f00fa9c 0x64 RW 
+.coredump.tasks.data 0x2f00fdf0 0x110 RW 
+.coredump.tasks.data 0x2f0113e0 0x64 RW 
+.coredump.tasks.data 0x2f0112d0 0x100 RW 
+.coredump.tasks.data 0x2f00ff08 0x64 RW 
+.coredump.tasks.data 0x2f010250 0x110 RW 
+.coredump.tasks.data 0x2f07b500 0x64 RW 
+.coredump.tasks.data 0x2e0011c0 0x120 RW 
+.trace.core0.data 0x2f013bd4 0x2000 RW 
+.trace.core1.data 0x2f011470 0x2000 RW 
+
+===================== RISC-V TRACE SNAPSHOT =====================
+ABI 1.0, reason PANIC, cores 2
+Target 0x0020, chip revision v0.0
+App ELF SHA256: 42ed00994f2192422df7a835615b565fc1b568acb03cf05dd496aa7c0f0d7cf4
+Core 0: memory LOOP, format ET20, address DELTA
+  resync PACKET, threshold 128
+  buffer 0x2f013bd4, capacity 0x2000, head 0x1660, segment 19
+  hw fifo 0x00000001, intr 0x00000000, empty yes, full no, overflow no
+Core 1: memory LOOP, format ET20, address DELTA
+  resync PACKET, threshold 128
+  buffer 0x2f011470, capacity 0x2000, head 0x1d90, segment 20
+  hw fifo 0x00000001, intr 0x00000000, empty yes, full no, overflow no
+
+===================== ESP32 CORE DUMP END =====================
+===============================================================
+Done!
