@@ -76,14 +76,15 @@ class RiscvMethodsMixin(BaseArchMethodsMixin):
         )
 
 
-def get_exc_frame_csrs(load_segments, regs):
-    # type: (list, list[int]) -> Optional[dict[str, int]]
+def find_exc_frame(load_segments, regs):
+    # type: (list, list[int]) -> Optional[Tuple[int, bytes]]
     """
-    Read the saved CSRs of the crashed task.
+    Locate the saved RvExcFrame of the crashed task.
     IDF saves the crashed task stack from the start of its RvExcFrame. With CONFIG_ESP_COREDUMP_CAPTURE_DRAM
     the stack is part of a larger DRAM segment, so find the same 32 regs anywhere in the segments
     and read the CSRs after them.
-    Return None if the frame is not found, is found at more than one address, or is a fake one.
+    Return the frame address and its CSR bytes, or None if the frame is not found,
+    is found at more than one address, or is a fake one.
     """
     if len(regs) != RISCV_GP_REGS_COUNT or regs[0] == IDF_FAKE_FRAME_PC:
         return None
@@ -99,7 +100,16 @@ def get_exc_frame_csrs(load_segments, regs):
             off = seg.data.find(head, off + 4)
     if len(frames) != 1:
         return None
-    values = Int32ul[len(EXC_FRAME_CSR_NAMES)].parse(next(iter(frames.values())))
+    return next(iter(frames.items()))
+
+
+def get_exc_frame_csrs(load_segments, regs):
+    # type: (list, list[int]) -> Optional[dict[str, int]]
+    """The saved CSRs of the crashed task, or None when the frame is not uniquely located."""
+    frame = find_exc_frame(load_segments, regs)
+    if frame is None:
+        return None
+    values = Int32ul[len(EXC_FRAME_CSR_NAMES)].parse(frame[1])
     return dict(zip(EXC_FRAME_CSR_NAMES, values))
 
 
