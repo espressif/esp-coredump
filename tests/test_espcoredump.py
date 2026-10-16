@@ -4,6 +4,7 @@ import base64
 import contextlib
 import io
 import os
+import struct
 import subprocess
 import sys
 import time
@@ -13,8 +14,9 @@ import pytest
 try:
     from esp_coredump import CoreDump
     from esp_coredump.corefile import ESPCoreDumpLoaderError
-    from esp_coredump.corefile.elf import ESPCoreDumpElfFile
+    from esp_coredump.corefile.elf import ElfSegment, ESPCoreDumpElfFile
     from esp_coredump.corefile.loader import ESPCoreDumpFileLoader, get_core_file_format, parse_parttool_offset_size
+    from esp_coredump.corefile.riscv import get_exc_frame_csrs
 except ImportError:
     raise ModuleNotFoundError('No module named "esp_coredump" please install esp_coredump by running "python -m pip install esp-coredump"')
 
@@ -275,6 +277,34 @@ class TestESPCoreDumpFileLoader:
         )
         loader.create_corefile()
         assert os.path.exists(loader.core_elf_file)
+
+
+class TestRiscvExcFrameCsrs:
+    REGS = [0x2F080040] + list(range(1, 32))
+    CSRS = [0x11881, 0x2F000003, 0x1, 0x2F080040, 0x0]
+    FRAME = struct.pack('<37I', *(REGS + CSRS))
+
+    def segment(self, addr, data):
+        return ElfSegment(addr, data, ElfSegment.PF_R | ElfSegment.PF_W)
+
+    def test_frame_at_segment_start(self):
+        csrs = get_exc_frame_csrs([self.segment(0x1000, self.FRAME + bytes(16))], self.REGS)
+        assert csrs == {'mstatus': 0x11881, 'mtvec': 0x2F000003, 'mcause': 0x1, 'mtval': 0x2F080040, 'mhartid': 0x0}
+
+    def test_frame_inside_dram_segment(self):
+        # With CONFIG_ESP_COREDUMP_CAPTURE_DRAM the task stack is not a segment of its own
+        csrs = get_exc_frame_csrs([self.segment(0x1000, bytes(0x100) + self.FRAME + bytes(0x100))], self.REGS)
+        assert csrs is not None and csrs['mcause'] == 0x1
+
+    def test_same_address_in_two_segments(self):
+        segs = [self.segment(0x1100, self.FRAME), self.segment(0x1000, bytes(0x100) + self.FRAME)]
+        assert get_exc_frame_csrs(segs, self.REGS) is not None
+
+    def test_frame_at_two_addresses(self):
+        assert get_exc_frame_csrs([self.segment(0x1000, self.FRAME + self.FRAME)], self.REGS) is None
+
+    def test_frame_without_csrs(self):
+        assert get_exc_frame_csrs([self.segment(0x1000, self.FRAME[:-4])], self.REGS) is None
 
 
 class TestDebugCoredump:
