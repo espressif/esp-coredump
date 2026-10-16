@@ -1,0 +1,9 @@
+menu "Core dump test app"
+
+    config TEST_PRINT_VARS
+        bool "Add variables tagged with COREDUMP_*_ATTR"
+        default n
+        help
+            Used for the --print-var and --print-all-vars test dump.
+
+endmenu

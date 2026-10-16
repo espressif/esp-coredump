@@ -46,7 +46,7 @@ def common_options(func):
         click.option(
             '--save-core',
             '-s',
-            help='Save core to file. Otherwise temporary core file will be deleted. Does not work with "-c"',
+            help='Save core to file. Otherwise temporary core file will be deleted. Ignored when "-c" is an ELF file',
         ),
         click.option('--rom-elf', '-r', help='Path to ROM ELF file. Will use "<target>_rom.elf" if not specified'),
         click.argument('prog'),
@@ -128,9 +128,22 @@ def dbg_corefile(ctx, **opts):
 @cli.command('info_corefile')
 @common_options
 @click.option('--print-mem', '-m', is_flag=True, default=False, help='Print memory dump')
+@click.option(
+    '--print-var',
+    'print_vars',
+    multiple=True,
+    help='Print a variable or expression as "[/fmt] EXPR", for example "/x g_state.flags". Can be repeated.',
+)
+@click.option(
+    '--print-all-vars',
+    is_flag=True,
+    default=False,
+    help='Print all variables tagged with a COREDUMP_*_ATTR attribute',
+)
 @click.pass_context
 def info_corefile(ctx, **opts):
     """Print core dump info from file"""
+    opts['print_vars'] = list(opts['print_vars']) or None
     _run(ctx, 'info_corefile', **opts)
 
 

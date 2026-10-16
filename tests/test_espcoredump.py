@@ -126,6 +126,41 @@ class TestESPCoreDumpDecode:
         out = proc.stdout.decode().split('\n', 1)[1]  # remove first line with version
         assert expected_output == out
 
+    def test_coredump_print_vars(self, coverage_run):
+        """Same command as for expected_output_print_vars in README.md"""
+        target = 'esp32s31'
+        proc = subprocess.run(
+            coverage_run
+            + [
+                '-m',
+                'esp_coredump',
+                '--chip',
+                target,
+                'info_corefile',
+                '-c',
+                os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}_print_vars.b64'),
+                '-t',
+                'b64',
+                '--print-all-vars',
+                '--print-var',
+                '/x $pc',
+                '--print-var',
+                "'tasks.c'::xTickCount",
+                '--print-var',
+                'no_such_symbol',
+                '--print-var',
+                'esp_isr_names[2]',
+                '--print-var',
+                'g_batt.mv',
+                os.path.join(ESP_PROG_DIR, f'{target}_print_vars.elf'),
+            ],
+            capture_output=True,
+        )
+        out = proc.stdout.decode().split('\n', 1)[1]  # remove first line with version
+        with open(os.path.join(TEST_DIR_ABS_PATH, target, 'expected_output_print_vars')) as f:
+            assert f.read() == out
+        assert 'Some values are not in the core dump' in proc.stderr.decode()
+
     @pytest.mark.parametrize('target', ['esp32', 'esp32c3'])
     def test_bin_coredump_decode(self, target):
         """Built with CONFIG_ESP_COREDUMP_DATA_FORMAT_BIN=y (instead of default ELF)"""

@@ -27,3 +27,20 @@ espcoredump.py --chip $TARGET info_corefile -c ./$TARGET/coredump.b64 -t b64 -m 
 ```
 
 Do the same for the other supported targets. Do not forget to remove the first line with `espcoredump.py vX.Y.Z`.
+
+## Update `expected_output_print_vars` Test Data
+
+`./esp32s31/expected_output_print_vars` tests `--print-all-vars` and `--print-var`. Its files have the `_print_vars` suffix and were built with `sdkconfig.print_vars`, which adds variables tagged with `COREDUMP_*_ATTR` to the test app:
+
+```sh
+idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.print_vars" set-target esp32s31 build
+```
+
+To update the expected output run
+
+```sh
+TARGET=esp32s31
+espcoredump.py --chip $TARGET info_corefile -c ./$TARGET/coredump_print_vars.b64 -t b64 --print-all-vars --print-var "/x \$pc" --print-var "'tasks.c'::xTickCount" --print-var no_such_symbol --print-var "esp_isr_names[2]" --print-var g_batt.mv ./test_apps/built_apps/${TARGET}_print_vars.elf > ./$TARGET/expected_output_print_vars
+```
+
+Remove the first line with `espcoredump.py vX.Y.Z`.

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import struct
 from typing import Optional  # noqa: F401
 
 from construct import (
@@ -104,6 +105,7 @@ class ElfFile:
 
     SHN_UNDEF = 0x00
     SHT_PROGBITS = 0x01
+    SHT_SYMTAB = 0x02
     SHT_STRTAB = 0x03
     SHT_NOBITS = 0x08
 
@@ -125,6 +127,7 @@ class ElfFile:
         self.sections = []  # type: list[ElfSection]
         self.load_segments = []  # type: list[ElfSegment]
         self.note_segments = []  # type: list[ElfNoteSegment]
+        self.symbols = []  # type: list[ElfSymbol]
 
         self.sha256 = b''  # type: bytes
 
@@ -158,6 +161,8 @@ class ElfFile:
             )
             for sec in self._model.sections
         ]
+        if 'symtab' in self._model:
+            self.symbols = ElfSymbol.parse_table(self._model.symtab, self._model.symtab_strings)
 
         # calculate sha256 of the input bytes
         # (note: may differ from sha256 of any generated output struct,
@@ -228,6 +233,12 @@ class ElfFile:
         ]
         if string_table_sh is not None:
             args.append('string_table' / Pointer(string_table_sh.sh_offset, Bytes(string_table_sh.sh_size)))
+        for sh in section_headers:
+            if sh.sh_type == self.SHT_SYMTAB:
+                strings_sh = section_headers[sh.sh_link]
+                args.append('symtab' / Pointer(sh.sh_offset, Bytes(sh.sh_size)))
+                args.append('symtab_strings' / Pointer(strings_sh.sh_offset, Bytes(strings_sh.sh_size)))
+                break
 
         return Struct(*args)
 
@@ -256,6 +267,34 @@ class ElfSection:
 
     def __repr__(self):  # type: () -> str
         return '{:>32} [Addr] 0x{:>08X}, [Size] 0x{:>08X} {:>4}'.format(self.name, self.addr, len(self.data), self.attr_str())
+
+
+class ElfSymbol:
+    STB_LOCAL = 0
+    STT_OBJECT = 1
+    STT_FILE = 4
+    SHN_ABS = 0xFFF1
+
+    def __init__(self, name, value, size, info, shndx, file):  # type: (str, int, int, int, int, str) -> None
+        self.name = name
+        self.value = value
+        self.size = size
+        self.bind = info >> 4
+        self.type = info & 0xF
+        self.shndx = shndx
+        self.file = file
+
+    @classmethod
+    def parse_table(cls, table, strings):  # type: (bytes, bytes) -> list[ElfSymbol]
+        """Parse Elf32_Sym entries. Local symbols get the name of the STT_FILE symbol before them."""
+        symbols = []
+        file = ''
+        for st_name, value, size, info, _, shndx in struct.iter_unpack('<IIIBBH', table):
+            name = strings[st_name : strings.index(b'\0', st_name)].decode('utf-8', 'replace')
+            if info & 0xF == cls.STT_FILE:
+                file = name
+            symbols.append(cls(name, value, size, info, shndx, file if info >> 4 == cls.STB_LOCAL else ''))
+        return symbols
 
 
 class ElfSegment:
@@ -318,6 +357,7 @@ EspTaskStatus = Struct(
 
 class ESPCoreDumpElfFile(ElfFile):
     PT_ESP_INFO = 8266
+    PT_ESP_UPTIME = 681
     PT_ESP_PANIC_DETAILS = 679
     PT_ESP_TASK_INFO = 678
     PT_ESP_EXTRA_INFO = 677
