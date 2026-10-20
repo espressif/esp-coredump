@@ -14,7 +14,7 @@ try:
     from esp_coredump import CoreDump
     from esp_coredump.corefile import ESPCoreDumpLoaderError
     from esp_coredump.corefile.elf import ESPCoreDumpElfFile
-    from esp_coredump.corefile.loader import ESPCoreDumpFileLoader, parse_parttool_offset_size
+    from esp_coredump.corefile.loader import ESPCoreDumpFileLoader, get_core_file_format, parse_parttool_offset_size
 except ImportError:
     raise ModuleNotFoundError('No module named "esp_coredump" please install esp_coredump by running "python -m pip install esp-coredump"')
 
@@ -60,7 +60,7 @@ def get_coredump_kwargs(
 
 def get_expected_output(target: str, bin_fmt: bool = False):
     expected_output_file = os.path.join(TEST_DIR_ABS_PATH, target, 'expected_output' + ('_bin' if bin_fmt else ''))
-    with open(expected_output_file) as file:
+    with open(expected_output_file, encoding='utf-8') as file:
         output = file.read()
     return output
 
@@ -89,7 +89,7 @@ def get_output(
         coredump.info_corefile()
         output = buffer.getvalue()
 
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
         f.write(output)
     return output
 
@@ -157,7 +157,7 @@ class TestESPCoreDumpDecode:
             capture_output=True,
         )
         out = proc.stdout.decode().split('\n', 1)[1]  # remove first line with version
-        with open(os.path.join(TEST_DIR_ABS_PATH, target, 'expected_output_print_vars')) as f:
+        with open(os.path.join(TEST_DIR_ABS_PATH, target, 'expected_output_print_vars'), encoding='utf-8') as f:
             assert f.read() == out
         assert 'Some values are not in the core dump' in proc.stderr.decode()
 
@@ -228,6 +228,25 @@ class TestParseParttoolOffsetSize:
         offset, size = parse_parttool_offset_size(res)
         assert offset == 0x110000
         assert size == 0x10000
+
+
+class TestGetCoreFileFormat:
+    @pytest.mark.parametrize('target', SUPPORTED_TARGET)
+    def test_b64_file(self, target):
+        core_file = os.path.join(TEST_DIR_ABS_PATH, target, f'{COREDUMP_FILE_NAME}.b64')
+        assert get_core_file_format(core_file) == 'b64'
+
+    def test_b64_padding_on_each_line(self, tmp_path):
+        # Every line is encoded separately, so padding is not only at the end of the file
+        core_file = tmp_path / 'coredump.b64'
+        core_file.write_bytes(b'QUI=\r\n\r\nQ0Q=\r\n')
+        assert get_core_file_format(str(core_file)) == 'b64'
+
+    def test_unknown_binary(self, tmp_path):
+        core_file = tmp_path / 'coredump.bin'
+        core_file.write_bytes(b'\xde\xad\xbe\xef' * 4 + b'not base64')
+        with pytest.raises(SystemExit):
+            get_core_file_format(str(core_file))
 
 
 class TestESPCoreDumpElfFile:

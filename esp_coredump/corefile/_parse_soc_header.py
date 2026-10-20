@@ -42,7 +42,7 @@ def main():  # type: () -> None
             '{}.py'.format(target),
         )
 
-        with open(soc_header_fp) as fr:
+        with open(soc_header_fp, encoding='utf-8') as fr:
             for line in fr.readlines():
                 for attr in constants:
                     if '#define {}'.format(attr) in line:
@@ -56,7 +56,7 @@ def main():  # type: () -> None
                 )
                 target_constants[attr] = 2**32 - 1
 
-        with open(module_fp, 'w') as fw:
+        with open(module_fp, 'w', encoding='utf-8') as fw:
             for k, v in target_constants.items():
                 fw.write('{} = {}\n'.format(k, hex(v).lower()))
 

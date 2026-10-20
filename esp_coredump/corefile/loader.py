@@ -15,7 +15,6 @@ import subprocess
 import sys
 import tempfile
 import time
-from base64 import b64decode
 from typing import Optional, Tuple  # noqa: F401
 
 from construct import (
@@ -151,13 +150,14 @@ def get_core_file_format(core_file: str) -> str:
         if core_version.dump_ver in EspCoreDumpLoader.CORE_VERSIONS:
             return 'raw'
 
-    # Neither of theses headers matched, so this might be a base64 encoded core dump;
-    # however in case it's just some unknown binary, ignore decoding errors.
-    with open(core_file, encoding='utf-8', errors='ignore') as c:
-        coredump_str = c.read()
+    # Neither of these headers matched, so this might be a base64 encoded core dump.
+    # Every line is encoded separately, so decode it line by line in the same way as
+    # ESPCoreDumpFileLoader does; decoding fails if it's just some unknown binary.
+    with open(core_file, 'rb') as fb64:
         try:
-            b64decode(coredump_str)
-        except Exception:
+            for line in fb64:
+                base64.standard_b64decode(line.rstrip(b'\r\n'))
+        except binascii.Error:
             raise SystemExit(
                 'The format of the provided core-file is not recognized. '
                 'Please ensure that the core-format matches one of the following: '
