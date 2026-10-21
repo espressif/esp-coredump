@@ -30,7 +30,7 @@ dependencies = [
     "construct~=2.10",
     "pygdbmi>=0.9.0.2",
     "esptool",
-    "esp-pylib[cli]>=1.1.4",
+    "esp-pylib[cli,ide]>=1.1.4",
     # Context.protected_args, used by the argparse compatibility layer in cli_ext.py, will be removed in Click 9
     "click<9",
     "rich-click",

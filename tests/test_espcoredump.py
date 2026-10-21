@@ -245,8 +245,9 @@ class TestGetCoreFileFormat:
     def test_unknown_binary(self, tmp_path):
         core_file = tmp_path / 'coredump.bin'
         core_file.write_bytes(b'\xde\xad\xbe\xef' * 4 + b'not base64')
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             get_core_file_format(str(core_file))
+        assert exc_info.value.code == 1
 
 
 class TestESPCoreDumpElfFile:

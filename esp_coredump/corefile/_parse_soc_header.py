@@ -9,11 +9,11 @@
 # The script is ESP-IDF dependent and is not intended for use by end users.
 #
 import os
-import sys
 from ast import literal_eval
 
 from esp_coredump.coredump import IDF_SETUP_ERROR
 from esp_coredump.corefile import SUPPORTED_TARGETS
+from esp_coredump.log import log
 
 IDF_PATH = os.getenv('IDF_PATH')
 
@@ -50,10 +50,7 @@ def main():  # type: () -> None
 
         for attr in constants:
             if attr not in target_constants:
-                print(
-                    f'WARNING: {attr} is missing in {soc_header_fp}, check if this is correct!',
-                    file=sys.stderr,
-                )
+                log.warn(f'{attr} is missing in {soc_header_fp}, check if this is correct!')
                 target_constants[attr] = 2**32 - 1
 
         with open(module_fp, 'w', encoding='utf-8') as fw:
@@ -63,6 +60,5 @@ def main():  # type: () -> None
 
 if __name__ == '__main__':
     if not IDF_PATH:
-        print(IDF_SETUP_ERROR)
-        sys.exit(1)
+        log.die(IDF_SETUP_ERROR)
     main()
