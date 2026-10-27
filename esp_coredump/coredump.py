@@ -317,12 +317,12 @@ class CoreDump:
             return ''
 
         if not get_idf_path() or not get_rom_elf_dir():
-            log.print("The ROM ELF file won't be loaded automatically since you are running the utility out of IDF.")
+            log.note("The ROM ELF file won't be loaded automatically since you are running the utility out of IDF.")
             return ''
 
         rom_file_path = _pylib_get_rom_elf_path(target, chip_rev)
         if not rom_file_path:
-            log.print("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
+            log.note("The ROM ELF file won't load automatically since it was not found for the provided chip type.")
             return ''
 
         return str(rom_file_path)
@@ -364,11 +364,13 @@ class CoreDump:
             if threads is not None:
                 break
 
-            print('Retrying reading threads information...')
+            if attempt < RETRY_ATTEMPTS:
+                log.warn('Failed to read threads information. Retrying...')
 
         if threads is None:
-            print(
-                '\nThe threads information for the current task could not be '
+            log.print()  # newline
+            log.warn(
+                'The threads information for the current task could not be '
                 'retrieved. Please try running this command again with '
                 '--gdb-timeout-sec option to increase '
                 'the default value of internal delay for gdb responses '

@@ -158,7 +158,7 @@ def get_core_file_format(core_file: str) -> str:
             for line in fb64:
                 base64.standard_b64decode(line.rstrip(b'\r\n'))
         except binascii.Error:
-            raise SystemExit(
+            log.die(
                 'The format of the provided core-file is not recognized. '
                 'Please ensure that the core-format matches one of the following: '
                 'ELF (“elf”), raw (raw) or base64-encoded (b64) binary'
