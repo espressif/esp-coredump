@@ -20,6 +20,29 @@
 </div>
 <hr>
 
+## v1.18.0 (2026-10-29)
+
+### ✨ New Features
+
+- print uptime from the ESP_UPTIME note *(Erhan Kurubas - ab7af9b)*
+- print user variables with --print-var *(Erhan Kurubas - b4cb54a)*
+- decode RISC-V trace note and label trace buffer regions *(Erhan Kurubas - 7fe282b)*
+- Print RISC-V exception CSRs in info_corefile *(Erhan Kurubas - aa90600)*
+
+### 🐛 Bug Fixes
+
+- **cli**: correct --save-core help text *(Erhan Kurubas - d3ccfa4)*
+- Finish esp-pylib logging migration and install IDE exception hooks *(Peter Dragun - dff0649)*
+- add Python 3.15 support *(Roland Dobai - 99b5820)*
+- do not fail when GDB finds no threads *(Erhan Kurubas - d759f81)*
+- Use the target-specific GDB for Xtensa core dumps *(Erhan Kurubas - 61014ea)*
+- Skip loop registers for ESP32-S2 in binary core dumps *(Erhan Kurubas - ebdc858)*
+
+### 🔧 Code Refactoring
+
+- **gdb**: run all GDB/MI commands through _run_mi *(Erhan Kurubas - fad4596)*
+
+
 ## v1.17.2 (2026-09-16)
 
 ### 🐛 Bug Fixes
