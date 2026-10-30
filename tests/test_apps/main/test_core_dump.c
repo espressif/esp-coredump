@@ -60,6 +60,20 @@ static void set_tagged_vars(void)
 void set_cpp_tagged_vars(void);
 #endif
 
+#if CONFIG_TEST_CRASH_NULL_WRITE
+/* The pointer itself is volatile, so the compiler must keep the store instead of
+   treating the NULL dereference as undefined behaviour and dropping the code. */
+static uint32_t *volatile s_null_dest;
+
+/* Writing through a NULL pointer faults on the store, with mtval at the address.
+   The base register is not the register holding the stored value, which is what
+   the faulting-access rule has to get right. */
+static void __attribute__((noinline)) null_write(void)
+{
+    *s_null_dest = 0xA5A5A5A5;
+}
+#endif
+
 void fail_once(char unused)
 {
     static int first = 1;
@@ -82,6 +96,10 @@ void app_main(void)
 
 #if CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY == 1
     create_task_use_cap("ext_ram", MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+#endif
+
+#if CONFIG_TEST_CRASH_NULL_WRITE
+    null_write();
 #endif
 
     esp_rom_install_channel_putc(2, fail_once);

@@ -6,4 +6,11 @@ menu "Core dump test app"
         help
             Used for the --print-var and --print-all-vars test dump.
 
+    config TEST_CRASH_NULL_WRITE
+        bool "Write through a NULL pointer"
+        default n
+        help
+            Produces the store fault dump that esp-coredump analyze is tested on.
+            Without it the app makes the default abort() dump.
+
 endmenu
