@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/espressif/esp-coredump/analysis/report-v1.json",
+  "title": "esp-coredump crash analysis report, version 1",
+  "description": "Readers must ignore fields they do not know. New optional fields can be added in version 1.x.",
+  "type": "object",
+  "required": ["report_version", "input", "target", "elf", "crash", "tasks", "memory_areas", "facts", "checks", "warnings"],
+  "definitions": {
+    "na": {"const": "not_available"},
+    "hex": {"type": "string", "pattern": "^0x[0-9a-f]{8}$"},
+    "hex_or_na": {"anyOf": [{"$ref": "#/definitions/hex"}, {"$ref": "#/definitions/na"}]},
+    "id": {"type": "string", "pattern": "^(task|frame|area|fact|check|warning):[a-z0-9:.-]+$"},
+    "stack_status": {"enum": ["ok", "sp_outside_bounds", "isr_stack", "damaged", "not_available"]}
+  },
+  "properties": {
+    "report_version": {"type": "string", "pattern": "^1\\.[0-9]+$"},
+    "input": {
+      "type": "object",
+      "required": ["kind", "format", "dump_version"],
+      "properties": {
+        "kind": {"const": "coredump"},
+        "format": {"enum": ["b64", "elf", "raw", "flash"]},
+        "dump_version": {"$ref": "#/definitions/hex_or_na"}
+      }
+    },
+    "target": {
+      "type": "object",
+      "required": ["chip", "architecture", "chip_rev"],
+      "properties": {
+        "chip": {"type": "string"},
+        "architecture": {"enum": ["riscv", "xtensa"]},
+        "chip_rev": {"anyOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/definitions/na"}]}
+      }
+    },
+    "elf": {
+      "type": "object",
+      "required": ["name", "sha256", "match", "sections"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[^/\\\\]+$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "match": {"enum": ["match", "not_checked"]},
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "start", "size", "kind"],
+            "properties": {
+              "name": {"type": "string"},
+              "start": {"$ref": "#/definitions/hex"},
+              "size": {"type": "integer", "minimum": 0},
+              "kind": {"enum": ["code", "data", "bss"]}
+            }
+          }
+        }
+      }
+    },
+    "crash": {
+      "type": "object",
+      "required": ["kind", "reason", "panic_details", "core", "pc", "bad_address", "mcause", "in_interrupt", "crashed_task_id"],
+      "properties": {
+        "kind": {"enum": ["software_panic", "cpu_exception", "interrupt", "not_available"]},
+        "reason": {"type": "string"},
+        "panic_details": {"type": "string"},
+        "core": {"anyOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/definitions/na"}]},
+        "pc": {"$ref": "#/definitions/hex_or_na"},
+        "bad_address": {"$ref": "#/definitions/hex_or_na"},
+        "mcause": {"$ref": "#/definitions/hex_or_na"},
+        "in_interrupt": {"anyOf": [{"type": "boolean"}, {"$ref": "#/definitions/na"}]},
+        "crashed_task_id": {"anyOf": [{"$ref": "#/definitions/id"}, {"$ref": "#/definitions/na"}]}
+      }
+    },
+    "rom": {
+      "type": "object",
+      "description": "Executable sections of the ROM ELF, when one was found. ROM code is in no core dump.",
+      "required": ["name", "sections"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[^/\\\\]+$"},
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "start", "size", "kind"],
+            "properties": {
+              "name": {"type": "string"},
+              "start": {"$ref": "#/definitions/hex"},
+              "size": {"type": "integer", "minimum": 0},
+              "kind": {"const": "code"}
+            }
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "tcb", "name", "crashed", "registers", "stack", "frames"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^task:[0-9]+$"},
+          "tcb": {"$ref": "#/definitions/hex"},
+          "name": {"type": "string"},
+          "crashed": {"type": "boolean"},
+          "registers": {"type": "object", "additionalProperties": {"$ref": "#/definitions/hex"}},
+          "stack": {
+            "type": "object",
+            "required": ["start", "end", "sp", "status"],
+            "properties": {
+              "start": {"$ref": "#/definitions/hex_or_na"},
+              "end": {"$ref": "#/definitions/hex_or_na"},
+              "sp": {"$ref": "#/definitions/hex_or_na"},
+              "status": {"$ref": "#/definitions/stack_status"}
+            }
+          },
+          "frames": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "pc"],
+              "properties": {
+                "id": {"type": "string", "pattern": "^frame:[0-9]+:[0-9]+$"},
+                "pc": {"$ref": "#/definitions/hex"},
+                "function": {"type": "string"},
+                "file": {"type": "string", "not": {"pattern": "^([A-Za-z]:)?[/\\\\]"}},
+                "line": {"type": "integer", "minimum": 0}
+              }
+            }
+          }
+        }
+      }
+    },
+    "memory_areas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "start", "size", "flags"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^area:[0-9]+$"},
+          "kind": {"enum": ["task_tcb", "task_stack", "exception_stack", "code", "data"]},
+          "start": {"$ref": "#/definitions/hex"},
+          "size": {"type": "integer", "minimum": 0},
+          "flags": {"type": "string"},
+          "task_id": {"type": "string", "pattern": "^task:[0-9]+$"},
+          "elf_section": {"type": "string"}
+        },
+        "not": {"anyOf": [{"required": ["data"]}, {"required": ["bytes"]}]}
+      }
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "value", "source"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^fact:[a-z0-9-]+$"},
+          "kind": {"type": "string"},
+          "source": {"type": "string"}
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "rule", "result", "summary", "evidence_ids"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^check:[a-z0-9:.-]+$"},
+          "rule": {"type": "string", "pattern": "^[a-z0-9-]+\\.v[0-9]+$"},
+          "result": {"enum": ["confirmed", "found", "not_enough_data"]},
+          "value": {"type": "string"},
+          "summary": {"type": "string"},
+          "evidence_ids": {"type": "array", "items": {"$ref": "#/definitions/id"}}
+        }
+      }
+    },
+    "disassembly": {
+      "type": "object",
+      "required": ["id", "address", "text"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "address": {"$ref": "#/definitions/hex"},
+        "text": {"type": "string"}
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "code", "message", "ids"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^warning:[0-9]+$"},
+          "code": {"type": "string"},
+          "message": {"type": "string"},
+          "ids": {"type": "array", "items": {"$ref": "#/definitions/id"}}
+        }
+      }
+    }
+  }
+}

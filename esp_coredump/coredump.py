@@ -32,6 +32,7 @@ from construct import Container, GreedyRange, Int32ul, Int64sl, ListContainer, S
 from esp_pylib.constants import ESP_ROM_BAUD
 from esp_pylib.rom import get_idf_path, get_rom_elf_dir
 from esp_pylib.rom import get_rom_elf_path as _pylib_get_rom_elf_path
+from rich.markup import escape
 
 from esp_coredump.log import log
 
@@ -52,16 +53,14 @@ from .corefile.loader import (
     EspCoreDumpVersion,
     get_core_file_format,
 )
+from .corefile.riscv import RISCV_ISR_CTX_IDX
 from .corefile.riscv_trace import parse_riscv_trace_note
 
 MORE_INFO_MSG = 'Read more: https://github.com/espressif/esp-coredump/blob/master/README.md#installation'
 GDB_NOT_FOUND_ERROR = f'GDB executable not found. Please install GDB or set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
 IDF_SETUP_ERROR = f'Please set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
 
-RETRY_ATTEMPTS = 3
-
 XTENSA_ISR_CTX_IDX = 37
-RISCV_ISR_CTX_IDX = 1
 
 PRINT_VAR_FORMATS = 'xduotacfsz'
 NOT_IN_CORE_DUMP = '<not in core dump>'
@@ -120,6 +119,8 @@ class CoreDump:
         self.print_vars = print_vars
         self.print_all_vars = print_all_vars
         self.rom_elf = rom_elf
+        # get_rom_elf_path() results by (target, chip_rev), so GDB and the report share one lookup
+        self._rom_elf_paths = {}  # type: dict[Tuple[str, Optional[int]], str]
         self.save_core = save_core
 
     @staticmethod
@@ -310,6 +311,13 @@ class CoreDump:
         return gdb_args
 
     def get_rom_elf_path(self, chip_rev, target):  # type: (Optional[int], str) -> str
+        """The ROM ELF for the target, or '' when there is none. Looked up once, so its notes print once."""
+        key = (target, chip_rev)
+        if key not in self._rom_elf_paths:
+            self._rom_elf_paths[key] = self._find_rom_elf_path(chip_rev, target)
+        return self._rom_elf_paths[key]
+
+    def _find_rom_elf_path(self, chip_rev, target):  # type: (Optional[int], str) -> str
         if self.rom_elf:
             return self.rom_elf
 
@@ -359,14 +367,7 @@ class CoreDump:
     def print_threads_info(self, task_info):  # type: (Optional[list[Container]]) -> None
         print(self.gdb_esp.run_cmd('info threads'))
         # THREADS STACKS
-        for attempt in range(1, RETRY_ATTEMPTS + 1):
-            threads, current_thread_id = self.gdb_esp.get_thread_info(attempt * DEFAULT_GDB_TIMEOUT_SEC)
-            if threads is not None:
-                break
-
-            if attempt < RETRY_ATTEMPTS:
-                log.warn('Failed to read threads information. Retrying...')
-
+        threads, current_thread_id = self.gdb_esp.get_thread_info_retry()
         if threads is None:
             log.print()  # newline
             log.warn(
@@ -755,7 +756,7 @@ class CoreDump:
 
         extra_info = None
         if extra_note:
-            extra_info = Struct('regs' / GreedyRange(Int32ul)).parse(extra_note.desc).regs
+            extra_info = GreedyRange(Int32ul).parse(extra_note.desc)
             marker = extra_info[0]
             self.print_crashed_task_info(marker)
             self.print_isr_context(extra_info)
@@ -795,6 +796,28 @@ class CoreDump:
         print('\n===================== ESP32 CORE DUMP END =====================')
         print('===============================================================')
 
+        self.gdb_esp.close()
         del self.gdb_esp
         print('Done!')
         return temp_files  # type: ignore
+
+    def analyze(self, json_path=None):  # type: (Optional[str]) -> None
+        """
+        Command to load a core dump from file or flash and print a crash summary.
+        RISC-V only. With json_path, also write the machine-readable report there.
+
+        Raises ReportError when no analysis can be made, so the caller decides how to
+        report it. The report collector removes its own temporary files.
+        """
+        # imported here so that info_corefile and dbg_corefile do not pay for it
+        from .analysis import build_report, summary_text
+
+        report = build_report(self)
+        # Written before the summary, so a failed write never prints a summary that
+        # implies the file is there.
+        if json_path:
+            report.write_json(json_path)
+            log.print(f'Report written to {escape(json_path)}', file=sys.stderr)
+        # log.stdout, not log.print: the summary is the output of the command, so
+        # --debug 0 must not silence it. The text is already wrapped, hence soft_wrap.
+        log.stdout.print(summary_text(report, self.prog), soft_wrap=True)

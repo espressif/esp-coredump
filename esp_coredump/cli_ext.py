@@ -11,8 +11,10 @@ from types import SimpleNamespace
 import rich_click as click
 from esp_pylib.cli_types import AnyIntType, BaudRateType, SerialPortType
 from esp_pylib.constants import ESP_ROM_BAUD
+from rich.markup import escape
 
 from esp_coredump import CoreDump, __version__
+from esp_coredump.corefile.loader import remove_temp_files
 from esp_coredump.log import log
 
 from .corefile import SUPPORTED_TARGETS
@@ -56,28 +58,25 @@ def common_options(func):
     return func
 
 
-def _run(ctx, operation, **opts):
-    """Build a `CoreDump` from the merged CLI options and run *operation*."""
-    debug = opts.pop('debug', 3)
-    log.set_log_level(debug)
+def _build_coredump(ctx, opts):
+    """Apply the options shared by every subcommand and build the `CoreDump` to run on."""
+    log.set_log_level(opts.pop('debug', 3))
     # Keep stdout reserved for the core dump report; route diagnostics to stderr.
     log.set_info_stream(sys.stderr)
 
     kwargs = dict(ctx.obj)
     kwargs.update(opts)
-    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    return CoreDump(**{k: v for k, v in kwargs.items() if v is not None})
 
-    espcoredump = CoreDump(**kwargs)
+
+def _run(ctx, operation, **opts):
+    """Build a `CoreDump` from the merged CLI options and run *operation*."""
+    espcoredump = _build_coredump(ctx, opts)
     temp_core_files = None
     try:
         temp_core_files = getattr(espcoredump, operation)()
     finally:
-        if temp_core_files:
-            for f in temp_core_files:
-                try:
-                    os.remove(f)
-                except OSError:
-                    pass
+        remove_temp_files(temp_core_files)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
@@ -145,6 +144,26 @@ def info_corefile(ctx, **opts):
     """Print core dump info from file"""
     opts['print_vars'] = list(opts['print_vars']) or None
     _run(ctx, 'info_corefile', **opts)
+
+
+@cli.command('analyze')
+@common_options
+@click.option('--json', 'json_path', type=click.Path(dir_okay=False, writable=True), help='Write the crash report as JSON')
+@click.pass_context
+def analyze(ctx, json_path, **opts):
+    """Analyze a core dump and print a crash summary (RISC-V only).
+
+    Use --json to also write the machine-readable report.
+    """
+    from .analysis import ReportError
+
+    try:
+        # Format detection opens the core file before the collector validates it, so an
+        # unreadable dump surfaces here as an OSError. Report it the same way as every
+        # other missing input instead of as a traceback.
+        _build_coredump(ctx, opts).analyze(json_path)
+    except (ReportError, OSError) as e:
+        log.die(f'No analysis was made. {escape(str(e))}')
 
 
 class _ArgparseCompatParser:

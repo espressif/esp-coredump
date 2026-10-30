@@ -16,6 +16,8 @@ from esp_coredump.log import log
 from . import ESPCoreDumpError
 
 DEFAULT_GDB_TIMEOUT_SEC = 3
+# get_thread_info_retry() asks this many times, each time waiting one timeout longer
+THREAD_INFO_ATTEMPTS = 3
 
 try:
     # pygdbmi>=0.10.0.2 decodes stream payloads
@@ -62,25 +64,34 @@ class EspGDB:
         self._run_mi('-data-list-register-values x pc')
 
     def __del__(self):
-        """
-        EspGDB destructor taking GdbController.gdb_process.exit() and adjusting it
-        to work properly
-        """
+        """Last-resort cleanup for a caller that never called close()."""
         try:
-            if self.p.gdb_process:
-                self.p.gdb_process.terminate()
-                if os.name != 'nt':
-                    # this is causing an Exception on Windows,
-                    # but is required on UNIX systems
-                    # Close pipes (STDIN, STDOUT, STDERR)
-                    self.p.gdb_process.communicate()
-                try:
-                    self.p.gdb_process.wait(timeout=1)
-                except TimeoutExpired:
-                    if self.p.gdb_process.returncode is None:
-                        self.p.gdb_process.kill()
-                self.p.gdb_process = None
-        except IndexError:
+            self.close()
+        except Exception:
+            # Destructors must not raise, especially when __init__ failed before
+            # the controller was assigned or while Python is shutting down.
+            pass
+
+    def close(self):
+        """Stop the GDB process, if construction got far enough to start one."""
+        controller = getattr(self, 'p', None)
+        process = getattr(controller, 'gdb_process', None)
+        if process is None:
+            return
+        try:
+            process.terminate()
+            if os.name != 'nt':
+                # this is causing an Exception on Windows,
+                # but is required on UNIX systems
+                # Close pipes (STDIN, STDOUT, STDERR)
+                process.communicate()
+            try:
+                process.wait(timeout=1)
+            except TimeoutExpired:
+                if process.returncode is None:
+                    process.kill()
+            controller.gdb_process = None
+        except (IndexError, OSError):
             log.warn('Attempt to terminate the GDB process failed, because it is already terminated. Skip.')
 
     def _gdbmi_data_evaluate_expression(self, expr):
@@ -176,6 +187,19 @@ class EspGDB:
         if error or not result:
             return None, None
         return result.get('threads', []), result.get('current-thread-id')
+
+    def get_thread_info_retry(self):
+        """
+        get_thread_info(), asked again with a longer wait while GDB does not answer.
+        An empty thread list is an answer, so it is returned at once.
+        """
+        for attempt in range(1, THREAD_INFO_ATTEMPTS + 1):
+            threads, current_thread_id = self.get_thread_info(attempt * self.timeout)
+            if threads is not None:
+                return threads, current_thread_id
+            if attempt < THREAD_INFO_ATTEMPTS:
+                log.warn('Failed to read threads information. Retrying...')
+        return None, None
 
     def switch_thread(self, thr_id):
         """Tell GDB to switch to a specific thread, given its ID"""

@@ -52,6 +52,7 @@ dev = [
 ]
 test = [
     "coverage[toml]",
+    "jsonschema",
     "pytest",
 ]
 
@@ -60,6 +61,9 @@ esp-coredump = "esp_coredump.__main__:main"
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.package-data]
+esp_coredump = ["analysis/schema/*.json"]
 
 [tool.setuptools.packages.find]
 include = ["esp_coredump*"]

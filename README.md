@@ -1,10 +1,12 @@
 # esp-coredump
 
-A Python-based utility that helps users to retrieve and analyse core dumps. This tool provides two commands for core dumps analysis:
+A Python-based utility that helps users to retrieve and analyse core dumps. This tool provides three commands for core dumps analysis:
 
 - `info_corefile` - prints crashed task’s registers, callstack, list of available tasks in the system, memory regions and contents of memory stored in core dump (TCBs and stacks)
 
 - `dbg_corefile` - creates core dump ELF file and runs GDB debug session with this file. User can examine memory, variables and tasks states manually. Note that since not all memory is saved in core dump only values of variables allocated on stack will be meaningful
+
+- `analyze` - prints a crash summary: the crash category and faulting address, the crashed task and its backtrace, the instructions around the faulting one, and the results of independent checks. With `--json <path>` the same analysis is written as a machine-readable report. RISC-V targets only
 
 ## Installation
 
@@ -31,6 +33,7 @@ from esp_coredump import CoreDump
 coredump = CoreDump(chip='esp32', core='./tests/esp32/coredump.b64', print_mem=True, core_format='b64', prog='./test_apps/build/test_core_dump.elf')
 coredump.info_corefile()  #  print the info of the test app corefile
 coredump.dbg_corefile()  #  run GDB debug session with provided ELF file
+coredump.analyze()  #  print a crash summary, RISC-V only
 ```
 
 ## Documentation
