@@ -80,18 +80,26 @@ def get_exc_frame_csrs(load_segments, regs):
     # type: (list, list[int]) -> Optional[dict[str, int]]
     """
     Read the saved CSRs of the crashed task.
-    IDF saves the crashed task stack from the start of its RvExcFrame,
-    so find the segment that starts with the same 32 regs and read the CSRs after them.
-    Return None if the frame is not found or is a fake one.
+    IDF saves the crashed task stack from the start of its RvExcFrame. With CONFIG_ESP_COREDUMP_CAPTURE_DRAM
+    the stack is part of a larger DRAM segment, so find the same 32 regs anywhere in the segments
+    and read the CSRs after them.
+    Return None if the frame is not found, is found at more than one address, or is a fake one.
     """
     if len(regs) != RISCV_GP_REGS_COUNT or regs[0] == IDF_FAKE_FRAME_PC:
         return None
     head = Int32ul[RISCV_GP_REGS_COUNT].build(regs)
     csr_size = len(EXC_FRAME_CSR_NAMES) * 4
-    hits = [seg for seg in load_segments if seg.data.startswith(head) and len(seg.data) >= len(head) + csr_size]
-    if len(hits) != 1:
+    frames = {}  # type: dict[int, bytes]
+    for seg in load_segments:
+        off = seg.data.find(head)
+        while off >= 0:
+            csrs = seg.data[off + len(head) : off + len(head) + csr_size]
+            if len(csrs) == csr_size:
+                frames[seg.addr + off] = csrs
+            off = seg.data.find(head, off + 4)
+    if len(frames) != 1:
         return None
-    values = Int32ul[len(EXC_FRAME_CSR_NAMES)].parse(hits[0].data[len(head) : len(head) + csr_size])
+    values = Int32ul[len(EXC_FRAME_CSR_NAMES)].parse(next(iter(frames.values())))
     return dict(zip(EXC_FRAME_CSR_NAMES, values))
 
 
