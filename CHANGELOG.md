@@ -20,6 +20,14 @@
 </div>
 <hr>
 
+## v1.18.1 (2026-11-02)
+
+### 🐛 Bug Fixes
+
+- **riscv**: find the exception frame inside a DRAM segment *(Erhan Kurubas - 96f381a)*
+- Migrate PyPI release to trusted publishing *(Peter Dragun - 23ea7d9)*
+
+
 ## v1.18.0 (2026-10-29)
 
 ### ✨ New Features
