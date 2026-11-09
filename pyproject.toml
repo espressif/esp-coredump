@@ -35,6 +35,8 @@ dependencies = [
     "click<9",
     "rich-click",
     "rich",
+    # Coredump trace data requiring `esp-riscv-trace` can be generated only since ESP-IDF v6.2 which has also Python 3.11+ requirement
+    "esp-riscv-trace>=0.2.0; python_version >= '3.11'",
 ]
 
 [project.readme]

@@ -15,7 +15,7 @@ import sys
 import textwrap
 from contextlib import contextmanager
 from shutil import copyfile, which
-from typing import Optional, Tuple  # noqa: F401
+from typing import Any, Optional, Sequence, Tuple  # noqa: F401
 
 import serial
 
@@ -54,7 +54,7 @@ from .corefile.loader import (
     get_core_file_format,
 )
 from .corefile.riscv import RISCV_ISR_CTX_IDX
-from .corefile.riscv_trace import parse_riscv_trace_note
+from .corefile.riscv_trace import TraceNoteError, format_riscv_trace_note, parse_riscv_trace_note
 
 MORE_INFO_MSG = 'Read more: https://github.com/espressif/esp-coredump/blob/master/README.md#installation'
 GDB_NOT_FOUND_ERROR = f'GDB executable not found. Please install GDB or set up ESP-IDF to complete the action. {MORE_INFO_MSG}'
@@ -557,7 +557,7 @@ class CoreDump:
                 f'{task_info[0].task_stack_start:x}).'
             )
 
-    def print_all_memory_regions(self):  # type: () -> None
+    def print_all_memory_regions(self, trace_records=()):  # type: (Sequence[Any]) -> None
         print('Name   Address   Size   Attrs')
         core_segs = self.core_elf.load_segments
         tagged_segs = []
@@ -615,7 +615,7 @@ class CoreDump:
         for region, addr, size, seg, _ in tagged_segs:
             print(f'.coredump.{region} 0x{addr:x} 0x{size:x} {seg.attr_str()}')
 
-        trace_regions = self._riscv_trace_regions()
+        trace_regions = {r.segment_vaddr: f'.trace.core{r.core_id}.data' for r in trace_records if r.has_segment()}
         for cs in core_segs:
             # A segment that holds only a tagged region is printed above
             if any(cs is seg and inside for _, _, _, seg, inside in tagged_segs):
@@ -632,38 +632,20 @@ class CoreDump:
                 seg_name = 'tasks.data'
             print(f'.coredump.{seg_name} 0x{cs.addr:x} 0x{len(cs.data):x} {cs.attr_str()}')
 
-    def _riscv_trace_regions(self):  # type: () -> dict[int, str]
-        # Map each stored trace buffer to a per-core region name via the ESP_RISCV_TRACE note.
-        snapshot = parse_riscv_trace_note(self.core_elf)
-        if snapshot is None:
-            return {}
-        return {core.buffer_addr: f'.trace.core{core.core_id}.data' for core in snapshot.cores if core.buffer_present}
+    def _read_riscv_trace_note(self):  # type: () -> Optional[Tuple[Any, list[Any]]]
+        """Parse the ESP_RISCV_TRACE note once for the memory regions and the snapshot section."""
+        try:
+            return parse_riscv_trace_note(self.core_elf)
+        except TraceNoteError as e:
+            log.warn(f'RISC-V trace snapshot not shown. {escape(str(e))}')
+            return None
 
-    def print_riscv_trace_info(self):  # type: () -> None
-        snapshot = parse_riscv_trace_note(self.core_elf)
-        if snapshot is None:
+    def print_riscv_trace_info(self, header, records):  # type: (Any, list[Any]) -> None
+        if header is None:
             return
         print('\n===================== RISC-V TRACE SNAPSHOT =====================')
-        print(f'ABI {snapshot.abi_major}.{snapshot.abi_minor}, reason {snapshot.capture_reason_name}, cores {snapshot.core_count}')
-        print(f'Target 0x{snapshot.target_id:04x}, chip revision v{snapshot.chip_revision // 100}.{snapshot.chip_revision % 100}')
-        if any(snapshot.app_elf_sha256):
-            print(f'App ELF SHA256: {snapshot.app_elf_sha256.hex()}')
-        for core in snapshot.cores:
-            print(f'Core {core.core_id}: memory {core.memory_mode_name}, format {core.packet_format_name}, address {core.address_mode_name}')
-            print(f'  resync {core.resync_mode_name}, threshold {core.resync_threshold}')
-            if core.buffer_present:
-                head = f'0x{core.head_offset:x}' if core.head_valid else 'invalid'
-                print(f'  buffer 0x{core.buffer_addr:x}, capacity 0x{core.capacity:x}, head {head}, segment {core.segment_index}')
-            else:
-                print('  no buffer')
-            print(
-                f'  hw fifo 0x{core.fifo_status_raw:08x}, intr 0x{core.intr_status_raw:08x}, '
-                f'empty {"yes" if core.fifo_empty else "no"}, '
-                f'full {"yes" if core.memory_full else "no"}, '
-                f'overflow {"yes" if core.fifo_overflow else "no"}'
-            )
-            if core.quality_flags:
-                print(f'  quality: {", ".join(core.quality_flags)}')
+        for line in format_riscv_trace_note(header, records):
+            print(line)
 
     def print_core_dump_memory_contents(self):  # type: () -> None
         for cs in self.core_elf.load_segments:
@@ -784,10 +766,11 @@ class CoreDump:
         if user_vars:
             print('\n\n======================= USER VARIABLES ========================')
             self.print_user_vars(user_vars)
+        trace_header, trace_records = self._read_riscv_trace_note() or (None, [])
         print('\n\n======================= ALL MEMORY REGIONS ========================')
-        self.print_all_memory_regions()
+        self.print_all_memory_regions(trace_records)
 
-        self.print_riscv_trace_info()
+        self.print_riscv_trace_info(trace_header, trace_records)
 
         if self.print_mem:
             print('\n====================== CORE DUMP MEMORY CONTENTS ========================')
