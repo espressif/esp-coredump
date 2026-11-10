@@ -15,6 +15,20 @@ from esp_coredump.log import log
 from . import BaseArchMethodsMixin, BaseTargetMethods, ESPCoreDumpLoaderError
 
 RISCV_GP_REGS_COUNT = 32
+
+# Order of the 32 regs in the IDF RvExcFrame and in the PRSTATUS note
+REG_NAMES = (
+    'pc', 'ra', 'sp', 'gp', 'tp', 't0', 't1', 't2', 's0', 's1',
+    'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7',
+    's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11',
+    't3', 't4', 't5', 't6',
+)  # fmt: skip
+
+# PRSTATUS note type: one note per task in the core dump
+PT_PRSTATUS = 1
+# Indexes into the IDF extra-info note
+RISCV_CRASHED_TCB_IDX = 0
+RISCV_ISR_CTX_IDX = 1
 PRSTATUS_SIZE = 204
 PRSTATUS_OFFSET_PR_CURSIG = 12
 PRSTATUS_OFFSET_PR_PID = 24
@@ -76,14 +90,15 @@ class RiscvMethodsMixin(BaseArchMethodsMixin):
         )
 
 
-def get_exc_frame_csrs(load_segments, regs):
-    # type: (list, list[int]) -> Optional[dict[str, int]]
+def find_exc_frame(load_segments, regs):
+    # type: (list, list[int]) -> Optional[Tuple[int, bytes]]
     """
-    Read the saved CSRs of the crashed task.
+    Locate the saved RvExcFrame of the crashed task.
     IDF saves the crashed task stack from the start of its RvExcFrame. With CONFIG_ESP_COREDUMP_CAPTURE_DRAM
     the stack is part of a larger DRAM segment, so find the same 32 regs anywhere in the segments
     and read the CSRs after them.
-    Return None if the frame is not found, is found at more than one address, or is a fake one.
+    Return the frame address and its CSR bytes, or None if the frame is not found,
+    is found at more than one address, or is a fake one.
     """
     if len(regs) != RISCV_GP_REGS_COUNT or regs[0] == IDF_FAKE_FRAME_PC:
         return None
@@ -99,18 +114,30 @@ def get_exc_frame_csrs(load_segments, regs):
             off = seg.data.find(head, off + 4)
     if len(frames) != 1:
         return None
-    values = Int32ul[len(EXC_FRAME_CSR_NAMES)].parse(next(iter(frames.values())))
-    return dict(zip(EXC_FRAME_CSR_NAMES, values))
+    return next(iter(frames.items()))
+
+
+def parse_exc_frame_csrs(data):
+    # type: (bytes) -> dict[str, int]
+    """The CSR bytes that follow the 32 saved regs, as a name to value mapping."""
+    return dict(zip(EXC_FRAME_CSR_NAMES, Int32ul[len(EXC_FRAME_CSR_NAMES)].parse(data)))
+
+
+def get_exc_frame_csrs(load_segments, regs):
+    # type: (list, list[int]) -> Optional[dict[str, int]]
+    """The saved CSRs of the crashed task, or None when the frame is not uniquely located."""
+    frame = find_exc_frame(load_segments, regs)
+    return None if frame is None else parse_exc_frame_csrs(frame[1])
 
 
 def _crashed_task_regs(core_elf, extra_info):  # type: (Any, Optional[list]) -> Optional[list]
     """The 32 GPRs of the crashed task, taken from its PRSTATUS note."""
     if not extra_info:
         return None
-    crashed_tcb = extra_info[0]
+    crashed_tcb = extra_info[RISCV_CRASHED_TCB_IDX]
     for seg in core_elf.note_segments:
         for note in seg.note_secs:
-            if note.type != 1:
+            if note.type != PT_PRSTATUS:
                 continue
             pr = PrStruct.parse(note.desc)
             if pr.pr_pid == crashed_tcb:
@@ -118,7 +145,7 @@ def _crashed_task_regs(core_elf, extra_info):  # type: (Any, Optional[list]) -> 
     return None
 
 
-def _mcause_name(mcause):  # type: (int) -> Optional[str]
+def mcause_name(mcause):  # type: (int) -> Optional[str]
     if mcause & MCAUSE_INTERRUPT_BIT:
         return f'Interrupt {mcause & ~MCAUSE_INTERRUPT_BIT}'
     return EXCEPTION_NAMES.get(mcause)
@@ -132,7 +159,7 @@ def print_exc_regs_info(core_elf, extra_info):  # type: (Any, Optional[list]) ->
         log.warn('Exception registers have not been found!')
         return
     mcause = csrs['mcause']
-    reason = _mcause_name(mcause)
+    reason = mcause_name(mcause)
     cause = f'0x{mcause:x}' + (f' ({reason})' if reason else '')
     rows = (
         ('mepc', f'0x{regs[0]:x}'),

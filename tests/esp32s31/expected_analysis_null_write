@@ -1,0 +1,24 @@
+
+Crash: Store access fault (store fault)
+  core 0, task 'main' (task:0), PC 0x4000e9a2, bad address 0x00000000
+  stack ok (SP uses 128 of 4092 bytes)
+  in null_write() at main/test_core_dump.c:73
+Called from:
+  app_main() at main/test_core_dump.c:102
+  main_task() at components/freertos/app_startup.c:154
+  vPortTaskWrapper() at components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:267
+Disassembly around 0x4000e9a2 (the faulting instruction):
+  Dump of assembler code for function null_write:
+     0x4000e992 <+0>:  lui  a5,0x2f00f
+     0x4000e996 <+4>:  lw  a4,-1140(a5) # 0x2f00eb8c <s_null_dest>
+     0x4000e99a <+8>:  lui  a5,0xa5a5a
+     0x4000e99e <+12>:  addi  a5,a5,1445 # 0xa5a5a5a5
+     0x4000e9a2 <+16>:  sw  a5,0(a4)
+     0x4000e9a4 <+18>:  ret
+Findings:
+  [confirmed] A store through a4 faulted. The instruction at 0x4000e9a2 in null_write()
+              (main/test_core_dump.c:73) writes 4 bytes at 0(a4). a4 holds 0x00000000, so the
+              address is 0x00000000, which is the address the CPU faulted on. The core dump does not
+              show where the value in a4 came from.
+  [found]     The bad address 0x00000000 is a NULL pointer.
+Warnings: none

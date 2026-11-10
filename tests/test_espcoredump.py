@@ -10,6 +10,7 @@ import sys
 import time
 
 import pytest
+from analysis_helpers import ANALYSIS_CASES, analysis_args, analysis_paths, no_source_env, without_banner
 
 try:
     from esp_coredump import CoreDump
@@ -125,7 +126,7 @@ class TestESPCoreDumpDecode:
             stderr=subprocess.STDOUT,
         )
         expected_output = get_expected_output(target)
-        out = proc.stdout.decode().split('\n', 1)[1]  # remove first line with version
+        out = without_banner(proc.stdout)
         assert expected_output == out
 
     def test_coredump_print_vars(self, coverage_run):
@@ -158,10 +159,18 @@ class TestESPCoreDumpDecode:
             ],
             capture_output=True,
         )
-        out = proc.stdout.decode().split('\n', 1)[1]  # remove first line with version
+        out = without_banner(proc.stdout)
         with open(os.path.join(TEST_DIR_ABS_PATH, target, 'expected_output_print_vars'), encoding='utf-8') as f:
             assert f.read() == out
         assert 'Some values are not in the core dump' in proc.stderr.decode()
+
+    @pytest.mark.parametrize('case', ANALYSIS_CASES)
+    def test_coredump_analyze(self, coverage_run, case):
+        """Same command as for expected_analysis* in README.md"""
+        proc = subprocess.run(coverage_run + analysis_args(case), capture_output=True, env=no_source_env())
+        assert proc.returncode == 0, proc.stderr.decode()
+        with open(analysis_paths(case)[2]) as f:
+            assert f.read() == without_banner(proc.stdout)
 
     @pytest.mark.parametrize('target', ['esp32', 'esp32c3'])
     def test_bin_coredump_decode(self, target):

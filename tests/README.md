@@ -44,3 +44,32 @@ espcoredump.py --chip $TARGET info_corefile -c ./$TARGET/coredump_print_vars.b64
 ```
 
 Remove the first line with `espcoredump.py vX.Y.Z`.
+
+## Update `expected_analysis` Test Data
+
+`./esp32s31/expected_analysis_null_write` tests `esp-coredump analyze`. The crash is chosen by `sdkconfig.null_write` in `test_apps`, so the case needs its own build and ELF. One case keeps the ELF count down; add another only with a crash the store fault does not already prove:
+
+```sh
+TARGET=esp32s31
+CASE=null_write
+idf.py -C test_apps -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$CASE" set-target $TARGET build
+# flash, then save the base64 text between the CORE DUMP START and END markers
+# as ./$TARGET/coredump_$CASE.b64. The crash runs from app_main and
+# sdkconfig.defaults sets CONFIG_ESP_COREDUMP_UART_DELAY=0, so the dump prints
+# on its own at every boot.
+cp test_apps/build/test_core_dump.elf ./test_apps/built_apps/${TARGET}_${CASE}.elf
+```
+
+To update the expected output run
+
+```sh
+ESP_COREDUMP_NO_SOURCE=1 espcoredump.py --chip $TARGET analyze -c ./$TARGET/coredump_$CASE.b64 -t b64 ./test_apps/built_apps/${TARGET}_${CASE}.elf > ./$TARGET/expected_analysis_$CASE
+```
+
+Remove the first line with `espcoredump.py vX.Y.Z`.
+
+These files pin GDB's disassembly text and the ROM symbol names, so a toolchain or `esp-rom-elfs` update can change them. That is expected: regenerate them and read the diff, which is also how a decoding change gets reviewed.
+
+Rebuild the ELF and recapture the dump together whenever `test_core_dump.c` changes. The expected line numbers come from the ELF's debug info and the dump holds the addresses of that one build, so a source edit alone leaves all three disagreeing.
+
+`ESP_COREDUMP_NO_SOURCE=1` keeps the C source lines out of the expected output, because they are read from the machine that built the ELF. Run the command inside the ESP-IDF environment, so the ROM ELF is loaded and ROM frames resolve to names, as the other expected output files require.

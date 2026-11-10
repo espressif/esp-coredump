@@ -68,6 +68,42 @@ _CSI_RE = re.compile(rb'\x1b\[[0-9;?]*[ -/]*[@-~]')
 _PARTTOOL_OFFSET_SIZE_RE = re.compile(rb'^\s*(0x[0-9a-fA-F]+)\s+(0x[0-9a-fA-F]+)\s*$')
 
 
+def remove_temp_files(paths):
+    # type: (Optional[list[str]]) -> None
+    """Delete temporary core files. A path already gone is not an error."""
+    for path in paths or []:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+# The ESP_CORE_DUMP_INFO note: the dump version, then the app SHA256 as hex text
+EspCoreDumpInfo = Struct(
+    'ver' / Int32ul,
+    'sha256' / Bytes(64),
+)
+
+
+def parse_core_dump_info(desc):
+    # type: (bytes) -> Optional[Tuple[int, str]]
+    """
+    The dump version and the saved app SHA256 in lower case, or None when the note
+    is too short to hold them. The app can keep a shorter prefix of the SHA, set by
+    CONFIG_APP_RETRIEVE_LEN_ELF_SHA, and pads it with NUL bytes.
+    """
+    if len(desc) < EspCoreDumpInfo.sizeof():
+        return None
+    info = EspCoreDumpInfo.parse(desc)
+    return info.ver, info.sha256.rstrip(b'\x00').decode('ascii', 'replace').lower()
+
+
+def app_sha_matches(core_sha, app_sha):
+    # type: (str, str) -> bool
+    """The core dump keeps only a prefix of the app SHA256, so compare that much."""
+    return app_sha.lower().startswith(core_sha)
+
+
 def parse_parttool_offset_size(res):  # type: (bytes) -> Tuple[int, int]
     """Parse offset and size from parttool ``get_partition_info`` stdout.
 
@@ -462,29 +498,22 @@ class EspCoreDumpLoader(EspCoreDumpVersion):
                 # Check for version info note
                 if note_sec.name == b'ESP_CORE_DUMP_INFO' and note_sec.type == ESPCoreDumpElfFile.PT_ESP_INFO and exe_name:
                     exe_elf = ElfFile(exe_name)
-                    app_sha256 = binascii.hexlify(exe_elf.sha256)
-                    coredump_sha256_struct = Struct(
-                        'ver' / Int32ul,
-                        'sha256' / Bytes(64),  # SHA256 as hex string
-                    )
-                    coredump_sha256 = coredump_sha256_struct.parse(note_sec.desc[: coredump_sha256_struct.sizeof()])
+                    app_sha256 = binascii.hexlify(exe_elf.sha256).decode()
+                    info = parse_core_dump_info(note_sec.desc)
+                    if info is None:
+                        raise ESPCoreDumpLoaderError('Invalid core dump: the core dump info note is too short.')
+                    version, core_sha = info
 
-                    log.debug(f'App SHA256: {app_sha256!r}')
-                    log.debug(f'Core dump SHA256: {coredump_sha256!r}')
+                    log.debug(f'App SHA256: {app_sha256}')
+                    log.debug(f'Core dump SHA256: {core_sha}')
 
-                    # Actual coredump SHA may be shorter than a full SHA256 hash
-                    # with NUL byte padding, according to the app's
-                    # APP_RETRIEVE_LEN_ELF_SHA length
-                    core_sha_trimmed = coredump_sha256.sha256.rstrip(b'\x00').decode()
-                    app_sha_trimmed = app_sha256[: len(core_sha_trimmed)].decode()
-
-                    if core_sha_trimmed != app_sha_trimmed:
+                    if not app_sha_matches(core_sha, app_sha256):
                         raise ESPCoreDumpLoaderError(
-                            f'Invalid application image for coredump: coredump SHA256({core_sha_trimmed}) != app SHA256({app_sha_trimmed}).'
+                            f'Invalid application image for coredump: coredump SHA256({core_sha}) != app SHA256({app_sha256[: len(core_sha)]}).'
                         )
-                    if coredump_sha256.ver != self.version:
+                    if version != self.version:
                         raise ESPCoreDumpLoaderError(
-                            f'Invalid application image for coredump: coredump SHA256 version({coredump_sha256.ver}) != app SHA256 version({self.version}).'
+                            f'Invalid application image for coredump: coredump SHA256 version({version}) != app SHA256 version({self.version}).'
                         )
 
     @staticmethod
